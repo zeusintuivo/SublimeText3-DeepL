@@ -1,0 +1,5 @@
+sublime-DeepL-translate
+========================
+DeepL Translate plugin for SublimeText 3
+
+First version

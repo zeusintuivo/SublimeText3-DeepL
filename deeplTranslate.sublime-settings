@@ -1,0 +1,11 @@
+{
+	"source_language": "",// Auto detect if leave blank
+    "target_language": "es",// Must be specified
+    "keep_moving_down": "yes",  // or yes or no Will keep translating down the line
+    "target_type": "html",	// or plain or html or yml
+    "auth_key": "",	// your paid Deepl api key from your account settings
+    "proxy_enable": "no",	// enable or disable proxy
+    "proxy_type": "socks5",	// socks4 or socks5 or http
+    "proxy_host": "127.0.0.1", // eg. 127.0.0.1
+    "proxy_port": "9050"// eg. 9050
+}

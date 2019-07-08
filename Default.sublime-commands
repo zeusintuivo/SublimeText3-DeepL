@@ -1,0 +1,14 @@
+[
+  {
+    "caption":"DeepL Translate selected text",
+    "command": "deepl_translate"
+  },
+  {
+    "caption":"DeepL Translate selected to...",
+    "command": "deepl_translate_to"
+  },
+  {
+    "caption":"DeepL Translate Print the available translate variants",
+    "command": "deepl_translate_info"
+  }
+]

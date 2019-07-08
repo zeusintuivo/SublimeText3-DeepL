@@ -1,0 +1,21 @@
+[
+	{"caption":"-"},
+    {
+    	"command": "deepl_translate",
+    	"id":"deepl-translate",
+    	"caption": "DeepL Translate selected text"
+    },
+	{
+		"command": "deepl_translate_to",
+		"id":"deepl-translate-to",
+		"caption":"DeepL Translate selected to..."
+	},
+  	{
+		"caption":"DeepL Translate Print the available translate variants",
+		"command": "deepl_translate_info"
+	},
+	{
+		"caption":"DeepL Translate Print show all commands",
+		"command": "deepl_translate_show"
+	},
+]

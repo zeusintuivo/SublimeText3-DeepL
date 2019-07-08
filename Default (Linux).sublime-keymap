@@ -1,0 +1,4 @@
+[
+	{"keys": ["ctrl+alt+super+d"], "command": "deepl_translate"},
+	{"keys": ["shift+ctrl+alt+super+d"], "command": "deepl_translate_to"}
+]
