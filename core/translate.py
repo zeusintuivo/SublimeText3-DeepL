@@ -19,7 +19,7 @@ from json import loads
 from pprint import pprint
 import re
 import json
-
+import random
 if sublime.version() < '3':
     from urllib2 import urlopen, build_opener, Request
     from handler_st2 import *
@@ -139,8 +139,8 @@ class DeeplTranslate(object):
         print(10)
         original_no_spaces = original.lstrip()
         original_no_spaces_all = original_no_spaces.rstrip()
-        if original_no_spaces_all in (None, '', '<br/>', '</i>', '<strong>', '</strong>',
-                                      '<i>', '<br>', '</br>'):  # skip empty br's
+        if original_no_spaces_all in (None, '', '<br/>', '</i>', '<strong>', '</strong>', '<i>', '<br>', '</br>'):
+            # skip empty br's
             return True
         print(11)
         original_key_is = original_no_spaces.split(':')
@@ -151,8 +151,8 @@ class DeeplTranslate(object):
         if len(original_key_is) > 1:
             second_part_exists = original_key_is[1].lstrip().rstrip()
         if ':' in original and ':' in original and len(original_key_is) >= 2 and len(key_has_spaces) == 1:
-            print('row has a yml key:(' + original + ')')
             if second_part_exists in (None, '', '>', '|'):
+                print('row has a yml key:(' + original + ')')
                 # empty second meaning, then is a like == key: or key:>  or key: |
                 return True
         return False
@@ -291,7 +291,12 @@ class DeeplTranslate(object):
         return opener
 
     def _get_json5_from_deepl(self, text):
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:23.0) Gecko/20100101 Firefox/23.0'}
+        headerses = ['Mozilla/5.0 (Windows NT 6.1; WOW64; rv:23.0) Gecko/20100101 Firefox/23.0',
+                     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:67.0) Gecko/20100101 Firefox/67.0',
+                     'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:23.0) Gecko/20100101 Firefox/67.0',
+                     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) '
+                     'Chrome/75.0.3770.100 Safari/537.36']
+        headers = {'User-Agent': headerses[random.randrange(len(headerses))]}
         request_url = self.build_url(text)
         if self.proxyok == 'yes':
             opener = self.select_proxy_opener()
@@ -418,6 +423,8 @@ class DeeplTranslate(object):
         # print('target_language(' + target_language + ')')
         if '{' in original and '{' in html_string and '%' in original and '%' in html_string:   # fix  % { to  %{
             html_string = html_string.replace('% {', ' %{')
+        if '},' in original and '} ,' in html_string:  # fix  } , to  },
+            html_string = html_string.replace('} ,', '},')
         if ': >' in original and ':>' in html_string:      # fix :> to : >
             html_string = html_string.replace(':>', ': >')
 
