@@ -1,9 +1,9 @@
 {
-	"source_language": "",// Auto detect if leave blank
-    "target_language": "es",// Must be specified
+	"source_language": "",// Auto detect if leave blank like es de fr en
+    "target_language": "es",// Must be specified like es de fr en
     "keep_moving_down": "yes",  // or yes or no Will keep translating down the line
     "target_type": "html",	// or plain or html or yml
-    "auth_key": "",	// your paid Deepl api key from your account settings
+    "auth_key": "",	// your paid Deepl api key from your account settings. ATTENTION: without a key it will not work.
     "proxy_enable": "no",	// enable or disable proxy
     "proxy_type": "socks5",	// socks4 or socks5 or http
     "proxy_host": "127.0.0.1", // eg. 127.0.0.1

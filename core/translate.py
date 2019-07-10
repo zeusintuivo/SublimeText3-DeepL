@@ -8,6 +8,7 @@ import sublime
 
 try:
     # Python 3 assumption
+    import urllib
     from urllib.request import urlopen, build_opener, Request
     from urllib.parse import urlencode, quote, unquote
 except ImportError:
@@ -176,72 +177,56 @@ class DeeplTranslate(object):
         return sentence_data
 
     def _get_translation_from_deepl(self, text):
-        # try:
-        json5 = self._get_json5_from_deepl(text)
-        print("json5", json5)
-        pprint(json5)
-        # except IOError:
-        #     raise DeeplTranslateException(self.error_codes[501])
-        # except ValueError:
-        #     raise DeeplTranslateException(self.error_codes[503])
-        # return self._get_translation_from_json5(json5.encode('utf-8'))
+        try:
+            loaded = self._get_json5_from_deepl(text)
+            translation = self._get_translation_from_json(loaded)
+        except IOError:
+            raise DeeplTranslateException(self.error_codes[501])
+        except ValueError:
+            raise DeeplTranslateException(self.error_codes[503])
+        return translation
+
+    def build_url(self, text):
+        e = quote(text, '')
+        # try:         #   other params  deepL   &source_lang=EN&target_lang=DE&preserve_formatting=1&tag_handling=xml
+        if self.source == 'auto':
+            r = self.api_urls['translate'] + "&target_lang=%s&text=%s" % (self.target, e)
+        else:
+            r = self.api_urls['translate'] + "&source_lang=%s&target_lang=%s&text=%s" % (self.source, self.target, e)
+        return r
+
+    def select_proxy_opener(self):
+        if self.proxytp == 'socks5':
+            opener = build_opener(SocksiPyHandler(PROXY_TYPE_SOCKS5, self.proxyho, int(self.proxypo)))
+        else:
+            if self.proxytp == 'socks4':
+                opener = build_opener(SocksiPyHandler(PROXY_TYPE_SOCKS4, self.proxyho, int(self.proxypo)))
+            else:
+                opener = build_opener(SocksiPyHandler(PROXY_TYPE_HTTP, self.proxyho, int(self.proxypo)))
+        return opener
 
     def _get_json5_from_deepl(self, text):
-        escaped_source = quote(text, '')
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:23.0) Gecko/20100101 Firefox/23.0'}
-
+        request_url = self.build_url(text)
         if self.proxyok == 'yes':
-            if self.proxytp == 'socks5':
-                opener = build_opener(SocksiPyHandler(PROXY_TYPE_SOCKS5, self.proxyho, int(self.proxypo)))
-            else:
-                if self.proxytp == 'socks4':
-                    opener = build_opener(SocksiPyHandler(PROXY_TYPE_SOCKS4, self.proxyho, int(self.proxypo)))
-                else:
-                    opener = build_opener(SocksiPyHandler(PROXY_TYPE_HTTP, self.proxyho, int(self.proxypo)))
-            request_url = self.api_urls['translate'] + "&source_lang=%s&target_lang=%s&text=%s" % (
-            self.source, self.target, escaped_source)
-            print('request_url 1:' + request_url)
+            opener = self.select_proxy_opener()
+            # print('request_url 1:' + request_url)
             req = Request(request_url, headers=headers)
-            # &source_lang=EN&target_lang=DE&preserve_formatting=1&tag_handling=xml
             result = opener.open(req, timeout=2).read()
-            json = result.text
-
+            loaded = loads(result.decode('utf-8'))
+            return loaded
         else:
-            # try:
-            if self.source == 'auto':
-                request_url = self.api_urls['translate'] + \
-                              "&target_lang=%s&text=%s" % (self.target, escaped_source)
-            else:
-                request_url = self.api_urls['translate'] + \
-                              "&source_lang=%s&target_lang=%s&text=%s" % (self.source, self.target, escaped_source)
-            print('request_url 2:' + request_url)
-            req = Request(request_url, headers=headers)
-            pprint(req)
-            # except IOError:
-            #    raise DeeplTranslateException(self.error_codes[501])
-            #except ValueError:
-            #    raise DeeplTranslateException(self.error_codes[501])
-
-            # try:
-            result = urlopen(req, timeout=2).read()
-            print('result')
-            pprint(result)
-            json = result.decode('utf-8')
-            print('json')
-            pprint(json)
-            # print('is_json', self.is_json(json))
-            print('data')
-            data = self._get_translation_from_json5(json)
-            pprint(data['translations'][0]['text'])
-            # except IOError:
-            #    raise DeeplTranslateException(self.error_codes[501])
-            #except ValueError:
-            #    raise DeeplTranslateException(result.message)
-
-            print('result 2:' + result)
-            # print('result 2:' + result[0].detected_source_language)
-            # print('result 2:' + result[0].text)
-            json = result
+            # print('request_url 2:' + request_url)
+            try:
+                web_url = urllib.request.urlopen(request_url)
+                data = web_url.read()
+                encoding = web_url.info().get_content_charset('utf-8')
+                loaded = loads(data.decode(encoding))
+            except IOError:
+                raise DeeplTranslateException(self.error_codes[501])
+            except ValueError:
+                raise DeeplTranslateException(loaded['message'])
+            return loaded
         return json
 
     def is_json(myjson):
@@ -252,14 +237,13 @@ class DeeplTranslate(object):
         return True
 
     @staticmethod
-    def _get_translation_from_json5(content):
-        # print(content.decode('utf-8'))
-        response = content.decode('utf-8')
-        fixedJSON = re.sub(r',{2,}', ',', response).replace(',]', ']')
-        data = json.loads(fixedJSON)
-        # print(json.dumps(data, sort_keys=False, indent=2, separators=(',', ': ')))
-        result = data[0][0][0]
-        return result
+    def _get_translation_from_json(loaded):
+        translations = loaded['translations']
+        # deteced_lang = translations[0]['detected_source_language']
+        translation = translations[0]['text']
+        print('translation')
+        pprint(translation)
+        return translation
 
     @staticmethod
     def _unescape(text):
