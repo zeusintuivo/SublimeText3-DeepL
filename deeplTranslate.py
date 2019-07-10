@@ -92,17 +92,17 @@ class DeeplTranslateCommand(sublime_plugin.TextCommand):
                     largo = len(selection)
                     print('line(' + str(cur_line + 1) + ') length(' + str(largo) + ') selection(' + selection + ')')
 
-                    if largo > 256:
-                        print('')
-                        message = 'ERR:' + str(cur_line + 1) + ' line longer than 256 chars, consider split or short.'
-                        print(message)
-                        print('')
-                        sublime.status_message(u'ERR:' + str(cur_line + 1) + ' line too Long (' + selection + ')')
-                        self.view.window().show_quick_panel(
-                            ["Translate", "Error", message + " \n line(" + str(cur_line + 1) + ') length(' + str(
-                                largo) + ') selection(' + selection + ')'], "", 1, 2)
-                        keep_moving = False
-                        return
+                    # if largo > 256:
+                    #    print('')
+                    #    message = 'ERR:' + str(cur_line + 1) + ' line longer than 256 chars, consider split or short.'
+                    #    print(message)
+                    #    print('')
+                    #    sublime.status_message(u'ERR:' + str(cur_line + 1) + ' line too Long (' + selection + ')')
+                    #    self.view.window().show_quick_panel(
+                    #        ["Translate", "Error", message + " \n line(" + str(cur_line + 1) + ') length(' + str(
+                    #            largo) + ') selection(' + selection + ')'], "", 1, 2)
+                    #    keep_moving = False
+                    #    return
 
                     selection = selection.encode('utf-8')
 
