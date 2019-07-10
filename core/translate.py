@@ -107,7 +107,7 @@ class DeeplTranslate(object):
         elif formato == 'yml':
             if len(original) > 250:
                 # print('1')
-                data = self.fix_too_text(original)
+                data = self.fix_too_long_text(original)
             else:
                 # print('2')
                 if '%{' in original:
@@ -121,7 +121,7 @@ class DeeplTranslate(object):
             data = self.fix_deepl(data)
         return data
 
-    def fix_too_text(self, original):
+    def fix_too_long_text(self, original):
         if len(original) > 250:
             long_data = ""
             sentence_data = ""
@@ -176,6 +176,49 @@ class DeeplTranslate(object):
             sentence_data = splitted_trans
         return sentence_data
 
+    def fix_html_keep(self, sentence):
+        sentence_data = ""
+        split_percent = sentence.split('<')
+        splitted_trans = ""
+        count_split = 0
+        for splitted in split_percent:
+            if splitted in (None, ''):
+                # case 1 "%{time_ago} Dernière connexion sur le compte : il y a %{%{time_ago}%{time_ago}.".split('%{')
+                # ['', 'time_ago} Dernière connexion sur le compte : il y a ', '', 'time_ago}', 'time_ago}.']
+                # splitted = split_percent[0]  -- '' = splitted_trans = '%{'
+                # splitted = split_percent[1]  -- 'time_ago} Dernière connexion sur le compte : il y a '
+                # splitted = split_percent[2]  -- ''
+                # splitted = split_percent[3]  -- 'time_ago}'
+                # splitted = split_percent[4]  -- 'time_ago}'
+                # -
+                # case 2 "%{details_link}"
+                # ['', 'details_link}']
+                splitted_trans = splitted_trans + ' %{'
+            else:
+                if '}' in splitted:
+                    # 'time_ago} Dernière connexion sur le compte : il y a '
+                    cut_other_part = splitted.split('}')
+                    # ['time_ago', ' Dernière connexion sur le compte : il y a ']
+                    second_part_split = cut_other_part[1]
+                    #              ' Dernière connexion sur le compte : il y a '
+                    if second_part_split in (None, ''):
+                        splited_data = ''
+                    else:
+                        splited_data = self._get_translation_from_deepl(second_part_split)
+                    if count_split == 0:
+                        splitted_trans = splitted_trans + cut_other_part[0] + '} ' + splited_data
+                    else:
+                        splitted_trans = splitted_trans + ' %{' + cut_other_part[0] + '} ' + splited_data
+                else:
+                    splited_data = self._get_translation_from_deepl(splitted)
+                    splitted_trans = splitted_trans + splited_data
+                count_split = count_split + 1
+        if count_split == 0:
+            sentence_data = sentence_data + ' %{' + splitted_trans
+        else:
+            sentence_data = splitted_trans
+        return sentence_data
+
     def _get_translation_from_deepl(self, text):
         try:
             loaded = self._get_json5_from_deepl(text)
@@ -189,11 +232,11 @@ class DeeplTranslate(object):
     def build_url(self, text):
         e = quote(text, '')
         # try:         #   other params  deepL   &source_lang=EN&target_lang=DE&preserve_formatting=1&tag_handling=xml
+        s = self.api_urls['translate'] + "&preserve_formatting=1&tag_handling=xml"
         if self.source == 'auto':
-            r = self.api_urls['translate'] + "&target_lang=%s&text=%s" % (self.target, e)
+            return s + "&target_lang=%s&text=%s" % (self.target, e)
         else:
-            r = self.api_urls['translate'] + "&source_lang=%s&target_lang=%s&text=%s" % (self.source, self.target, e)
-        return r
+            return s + "&source_lang=%s&target_lang=%s&text=%s" % (self.source, self.target, e)
 
     def select_proxy_opener(self):
         if self.proxytp == 'socks5':
