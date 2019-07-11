@@ -196,7 +196,7 @@ class DeeplTranslateCommand(sublime_plugin.TextCommand):
                 # If the current line is the last line, or the contents of
                 # the current line does not match the regex, break out now.
                 if cur_line == last_line:  # or largo == 0:  # not _r_blank.match(selection):
-                    # print('cur_line(' + str(cur_line) + ') == last_line(' + str(last_line) + ')')
+                    print('cur_line(' + str(cur_line) + ') == last_line(' + str(last_line) + ')')
                     # print('selection.len(' + str(largo) + ')')
                     v.run_command('save')
                     sublime.active_window().run_command('save')
