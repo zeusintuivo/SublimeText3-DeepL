@@ -51,6 +51,7 @@ class DeeplTranslate(object):
         501: "ERR_SERVICE_NOT_AVAILABLE_TRY_AGAIN_OR_USE_PROXY",
         503: "ERR_VALUE_ERROR",
         504: "ERR_PROXY_NOT_SPECIFIED",
+        505: "TOO_MANY_LINES",
     }
 
     def __init__(self, proxy_enable, proxy_type, proxy_host, proxy_port, source_lang, target_lang):

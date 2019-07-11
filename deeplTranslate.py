@@ -74,6 +74,7 @@ class DeeplTranslateCommand(sublime_plugin.TextCommand):
         # Adjust as needed
         _r_blank = re.compile("^\s*(#.*)?$")
 
+        looping = 0
         while keep_moving:
             print('-------SublimeText3-DeepL-----:', '------------')
             for region in v.sel():
@@ -116,6 +117,13 @@ class DeeplTranslateCommand(sublime_plugin.TextCommand):
                         try:
                             result = translate.translate(selection, t_lang, s_lang, target_type)
                             time.sleep(0.15)
+                            looping = looping + 1
+                            if looping > 101:
+                                print('exiting 101 process here.')
+                                v.run_command('save')
+                                sublime.active_window().run_command('save')
+                                keep_moving = False
+                                raise DeeplTranslateException(translate.error_codes[401])
 
                         except:
                             # REF:
@@ -157,6 +165,13 @@ class DeeplTranslateCommand(sublime_plugin.TextCommand):
             if effectuate_keep_moving == 'no':
                 keep_moving = False
 
+            looping = looping + 1
+            if looping > 100:
+                print('exiting 100 process here.')
+                v.run_command('save')
+                sublime.active_window().run_command('save')
+                keep_moving = False
+
             if keep_moving:
                 # Move to the next line
                 v.run_command("move", {"by": "lines", "forward": True})
@@ -181,7 +196,7 @@ class DeeplTranslateCommand(sublime_plugin.TextCommand):
                 # If the current line is the last line, or the contents of
                 # the current line does not match the regex, break out now.
                 if cur_line == last_line:  # or largo == 0:  # not _r_blank.match(selection):
-                    print('cur_line(' + str(cur_line) + ') == last_line(' + str(last_line) + ')')
+                    # print('cur_line(' + str(cur_line) + ') == last_line(' + str(last_line) + ')')
                     # print('selection.len(' + str(largo) + ')')
                     v.run_command('save')
                     sublime.active_window().run_command('save')
