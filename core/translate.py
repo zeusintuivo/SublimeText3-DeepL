@@ -224,7 +224,7 @@ class DeeplTranslate(object):
                     print('24')
                     sentence_data = sentence_data + self.fix_variable_keep(sentence)
                 else:
-                    sentence_data = sentence_data + self._get_translation_from_google(sentence)
+                    sentence_data = sentence_data + self._get_translation_from_deepl(sentence)
         return sentence_data
 
     def fix_variable_keep(self, sentence):
