@@ -121,19 +121,96 @@ class DeeplTranslate(object):
                     else:
                         data = original
                 else:
-                    if '<' in original:
-                        print('3')
-                        data = self.fix_html_keep(original)
-                    elif '%{' in original:
-                        print('4')
-                        data = self.fix_variable_keep(original)
+                    if self.starts_with_key(original):
+                        saved_key = self.obtain_key(original)
+                        translate_this = self.obtain_second_part(original)
+                        if '<' in translate_this:
+                            print('a3')
+                            data = saved_key + ': ' + self.fix_html_keep(translate_this)
+                        elif '%{' in original:
+                            print('a4')
+                            data = saved_key + ': ' + self.fix_variable_keep(translate_this)
+                        else:
+                            print('a5')
+                            data = saved_key + ': ' + self._get_translation_from_deepl(translate_this)
                     else:
-                        data = self._get_translation_from_deepl(original)
+                        if '<' in original:
+                            print('b3')
+                            data = self.fix_html_keep(original)
+                        elif '%{' in original:
+                            print('b4')
+                            data = self.fix_variable_keep(original)
+                        else:
+                            print('b5')
+                            data = self._get_translation_from_deepl(original)
+
                     data = self.fix_yml(original, data, target_language, source_language)
         else:
             data = self._get_translation_from_deepl(text)
             data = self.fix_deepl(data)
         return data
+
+    @staticmethod
+    def starts_with_key(original):
+        print(20)
+        original_no_spaces = original.lstrip()
+        original_no_spaces_all = original_no_spaces.rstrip()
+        print(21)
+        original_key_is = original_no_spaces.split(':')
+        print(22)
+        key_has_spaces = original_key_is[0].split(' ')
+        print(23)
+        second_part_exists = ""
+        if len(original_key_is) > 1:
+            second_part_exists = original_key_is[1].lstrip().rstrip()
+        if ':' in original and ':' in original and len(original_key_is) >= 2 and len(key_has_spaces) == 1:
+            if len(second_part_exists) > 0:
+                print('has hey and second part has content:(' + second_part_exists + ')')
+                # empty second meaning, then is a like == key: or key:>  or key: |
+                return True
+        return False
+
+    @staticmethod
+    def obtain_key(original):
+        print(20)
+        original_no_spaces = original.lstrip()
+        original_no_spaces_all = original_no_spaces.rstrip()
+        print(21)
+        original_key_is = original_no_spaces.split(':')
+        print(22)
+        key_has_spaces = original_key_is[0].split(' ')
+        print(23)
+        second_part_exists = ""
+        first_part_exists = ""
+        if len(original_key_is) > 1:
+            second_part_exists = original_key_is[1].lstrip().rstrip()
+            first_part_exists = original_key_is[0].lstrip().rstrip()
+        if ':' in original and ':' in original and len(original_key_is) >= 2 and len(key_has_spaces) == 1:
+            if len(first_part_exists) > 0:
+                print('has hey called:(' + first_part_exists + ')')
+                # empty second meaning, then is a like == key: or key:>  or key: |
+                return first_part_exists
+        return original
+
+    @staticmethod
+    def obtain_second_part(original):
+        print(20)
+        original_no_spaces = original.lstrip()
+        original_no_spaces_all = original_no_spaces.rstrip()
+        print(21)
+        original_key_is = original_no_spaces.split(':')
+        print(22)
+        key_has_spaces = original_key_is[0].split(' ')
+        print(23)
+        second_part_exists = ""
+        if len(original_key_is) > 1:
+            second_part_exists = original_key_is[1].lstrip().rstrip()
+        if ':' in original and ':' in original and len(original_key_is) >= 2 and len(key_has_spaces) == 1:
+            if len(second_part_exists) > 0:
+                print('has hey and second part has content:(' + second_part_exists + ')')
+                # empty second meaning, then is a like == key: or key:>  or key: |
+                return second_part_exists
+        return original
 
     @staticmethod
     def is_it_just_a_key(original):
@@ -152,7 +229,7 @@ class DeeplTranslate(object):
         if len(original_key_is) > 1:
             second_part_exists = original_key_is[1].lstrip().rstrip()
         if ':' in original and ':' in original and len(original_key_is) >= 2 and len(key_has_spaces) == 1:
-            if second_part_exists in (None, '', '>', '|'):
+            if second_part_exists in (None, '', '>', '|', '|-'):
                 print('row has a yml key:(' + original + ')')
                 # empty second meaning, then is a like == key: or key:>  or key: |
                 return True
