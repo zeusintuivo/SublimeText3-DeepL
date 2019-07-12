@@ -4,7 +4,6 @@
 
 __version__ = "1.0.0"
 
-import sublime
 
 try:
     # Python 3 assumption
@@ -20,85 +19,13 @@ from pprint import pprint
 import re
 import json
 import random
-if sublime.version() < '3':
-    from urllib2 import urlopen, build_opener, Request
-    from handler_st2 import *
-    from socks_st2 import *
-else:
-    from .handler_st3 import *
-    from .socks_st3 import *
 
 
-class DeeplTranslateException(Exception):
-    """
-    Default DeeplTranslate exception
-    >>> DeeplTranslateException("DoctestError")
-    DeeplTranslateException('DoctestError',)
-    """
-    pass
-
-
-class DeeplTranslate(object):
-    string_pattern = r"\"(([^\"\\]|\\.)*)\""
-    match_string = re.compile(
-        r"\,?\["
-        + string_pattern + r"\,"
-        + string_pattern
-        + r"\]")
-
-    error_codes = {
-        401: "ERR_TARGET_LANGUAGE_NOT_SPECIFIED",
-        501: "ERR_SERVICE_NOT_AVAILABLE_TRY_AGAIN_OR_USE_PROXY",
-        503: "ERR_VALUE_ERROR",
-        504: "ERR_PROXY_NOT_SPECIFIED",
-        505: "TOO_MANY_LINES",
-    }
-
-    def __init__(self, proxy_enable, proxy_type, proxy_host, proxy_port, source_lang, target_lang):
-        settings = sublime.load_settings("deeplTranslate.sublime-settings")
-        auth_key = settings.get("auth_key")
-        self.cache = {
-            'languages': None,
-        }
-        self.api_urls = {
-            'translate': 'https://api.deepl.com/v2/translate?auth_key=' + auth_key
-        }
-        # https://api.deepl.com/v2/translate?auth_key=___&text=___&source_lang=EN&target_lang=DE&preserve_formatting=1&tag_handling=xml
-        if not source_lang:
-            source_lang = 'auto'
-        if not target_lang:
-            target_lang = 'en'
-            raise DeeplTranslateException(self.error_codes[401])
+class ProcessStrings(object):
+    def __init__(self, proxy_enable):
         if proxy_enable == 'yes':
-            if not proxy_type or not proxy_host or not proxy_port:
-                raise DeeplTranslateException(self.error_codes[504])
-        self.source = source_lang
-        self.target = target_lang
-        self.proxyok = proxy_enable
-        self.proxytp = proxy_type
-        self.proxyho = proxy_host
-        self.proxypo = proxy_port
-
-    @property
-    def languages(self, cache=True):
-        try:
-            if not self.cache['languages'] and cache:
-                self.cache['languages'] = loads('{"languages":{'
-                                                '"en":"English",'
-                                                '"es":"Spanish",'
-                                                '"de":"German",'
-                                                '"fr":"French",'
-                                                '"it":"Italian",'
-                                                '"pt":"Portuguese",'
-                                                '"pl":"Polish",'
-                                                '"nl":"Dutch",'
-                                                '"ru":"Russian",'
-                                                '}}')
-        except IOError:
-            raise DeeplTranslateException(self.error_codes[501])
-        except ValueError:
-            raise DeeplTranslateException(self.error_codes[503])
-        return self.cache['languages']
+            self.proxy_enable = proxy_enable
+        self.proxy_enable = proxy_enable
 
     def translate(self, text, target_language, source_language, formato='html'):
         original = unquote(quote(text, ''))
@@ -142,9 +69,6 @@ class DeeplTranslate(object):
                         elif '%{' in original:
                             print('a4')
                             data = saved_key + ': ' + self.fix_variable_keep(translate_this)
-                        elif '#{' in original:
-                            print('a4b')
-                            data = saved_key + ': ' + self.fix_hashruby_keep(translate_this)
                         else:
                             print('a5')
                             data = saved_key + ': ' + self._get_translation_from_deepl(translate_this)
@@ -175,11 +99,8 @@ class DeeplTranslate(object):
         elif '%{' in original:
             print('c4')
             return self.fix_variable_keep(original)
-        elif '#{' in original:
-            print('c4b')
-            return self.fix_hashruby_keep(original)
         else:
-            print('c5')
+            print('c5 _get_translation_from_deepl', original)
             return self._get_translation_from_deepl(original)
 
     @staticmethod
@@ -225,8 +146,7 @@ class DeeplTranslate(object):
         print(10)
         original_no_spaces = original.lstrip()
         original_no_spaces_all = original_no_spaces.rstrip()
-        if original_no_spaces_all in (None, "'", '"', '', '<br/>', '</i>', '<strong>', '</strong>', '<i>', '<br>',
-                                      '</br>', '</ br>', '<br >', '<br />'):
+        if original_no_spaces_all in (None, '', '<br/>', '</i>', '<strong>', '</strong>', '<i>', '<br>', '</br>'):
             # skip empty br's
             return True
         print(11)
@@ -299,49 +219,6 @@ class DeeplTranslate(object):
                 count_split = count_split + 1
         if count_split == 0:
             sentence_data = sentence_data + ' %{' + splitted_trans
-        else:
-            sentence_data = splitted_trans
-        return sentence_data
-
-    def fix_hashruby_keep(self, sentence):
-        sentence_data = ""
-        split_percent = sentence.split('#{')
-        splitted_trans = ""
-        count_split = 0
-        for splitted in split_percent:
-            if splitted in (None, ''):
-                # case 1 "#{time_ago} Dernière connexion sur le compte : il y a #{#{time_ago}#{time_ago}.".split('#{')
-                # ['', 'time_ago} Dernière connexion sur le compte : il y a ', '', 'time_ago}', 'time_ago}.']
-                # splitted = split_percent[0]  -- '' = splitted_trans = '#{'
-                # splitted = split_percent[1]  -- 'time_ago} Dernière connexion sur le compte : il y a '
-                # splitted = split_percent[2]  -- ''
-                # splitted = split_percent[3]  -- 'time_ago}'
-                # splitted = split_percent[4]  -- 'time_ago}'
-                # -
-                # case 2 "#{details_link}"
-                # ['', 'details_link}']
-                splitted_trans = splitted_trans + ' #{'
-            else:
-                if '}' in splitted:
-                    # 'time_ago} Dernière connexion sur le compte : il y a '
-                    cut_other_part = splitted.split('}')
-                    # ['time_ago', ' Dernière connexion sur le compte : il y a ']
-                    second_part_split = cut_other_part[1]
-                    #              ' Dernière connexion sur le compte : il y a '
-                    if second_part_split in (None, ''):
-                        splited_data = ''
-                    else:
-                        splited_data = self._get_translation_from_deepl(second_part_split)
-                    if count_split == 0:
-                        splitted_trans = splitted_trans + cut_other_part[0] + '} ' + splited_data
-                    else:
-                        splitted_trans = splitted_trans + ' #{' + cut_other_part[0] + '} ' + splited_data
-                else:
-                    splited_data = self._get_translation_from_deepl(splitted)
-                    splitted_trans = splitted_trans + splited_data
-                count_split = count_split + 1
-        if count_split == 0:
-            sentence_data = sentence_data + ' #{' + splitted_trans
         else:
             sentence_data = splitted_trans
         return sentence_data
@@ -460,130 +337,6 @@ class DeeplTranslate(object):
             sentence_data = splitted_trans
         return sentence_data
 
-    def _get_translation_from_deepl(self, text):
-        try:
-            loaded = self._get_json5_from_deepl(text)
-            translation = self._get_translation_from_json(loaded)
-        except IOError:
-            raise DeeplTranslateException(self.error_codes[501])
-        except ValueError:
-            raise DeeplTranslateException(self.error_codes[503])
-        return translation
-
-    def build_url(self, text):
-        e = quote(text, '')
-        # try:         #   other params  deepL   &source_lang=EN&target_lang=DE&preserve_formatting=1&tag_handling=xml
-        s = self.api_urls['translate'] + "&preserve_formatting=1"
-        if self.source == 'auto':
-            return s + "&target_lang=%s&text=%s" % (self.target, e)
-        else:
-            return s + "&source_lang=%s&target_lang=%s&text=%s" % (self.source, self.target, e)
-
-    def select_proxy_opener(self):
-        if self.proxytp == 'socks5':
-            opener = build_opener(SocksiPyHandler(PROXY_TYPE_SOCKS5, self.proxyho, int(self.proxypo)))
-        else:
-            if self.proxytp == 'socks4':
-                opener = build_opener(SocksiPyHandler(PROXY_TYPE_SOCKS4, self.proxyho, int(self.proxypo)))
-            else:
-                opener = build_opener(SocksiPyHandler(PROXY_TYPE_HTTP, self.proxyho, int(self.proxypo)))
-        return opener
-
-    def _get_json5_from_deepl(self, text):
-        headerses = ['Mozilla/5.0 (Windows NT 6.1; WOW64; rv:23.0) Gecko/20100101 Firefox/23.0',
-                     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:67.0) Gecko/20100101 Firefox/67.0',
-                     'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:23.0) Gecko/20100101 Firefox/67.0',
-                     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) '
-                     'Chrome/75.0.3770.100 Safari/537.36']
-        headers = {'User-Agent': headerses[random.randrange(len(headerses))]}
-        request_url = self.build_url(text)
-        if self.proxyok == 'yes':
-            opener = self.select_proxy_opener()
-            # print('request_url 1:' + request_url)
-            req = Request(request_url, headers=headers)
-            result = opener.open(req, timeout=2).read()
-            loaded = loads(result.decode('utf-8'))
-            return loaded
-        else:
-            # print('request_url 2:' + request_url)
-            try:
-                web_url = urllib.request.urlopen(request_url)
-                data = web_url.read()
-                encoding = web_url.info().get_content_charset('utf-8')
-                loaded = loads(data.decode(encoding))
-            except IOError:
-                raise DeeplTranslateException(self.error_codes[501])
-            except ValueError:
-                raise DeeplTranslateException(loaded['message'])
-            return loaded
-        return json
-
-    def is_json(myjson):
-        try:
-            json_object = json.loads(myjson)
-        except ValueError:
-            return False
-        return True
-
-    @staticmethod
-    def _get_translation_from_json(loaded):
-        translations = loaded['translations']
-        # deteced_lang = translations[0]['detected_source_language']
-        translation = translations[0]['text']
-        print('translation')
-        pprint(translation)
-        return translation
-
-    @staticmethod
-    def _unescape(text):
-        return loads('"%s"' % text)
-
-    def filter_tags(self, htmlstr):
-        re_cdata = re.compile('//<!\[CDATA\[[^>]*//\]\]>', re.I)
-        re_script = re.compile('<\s*script[^>]*>[^<]*<\s*/\s*script\s*>', re.I)
-        re_style = re.compile('<\s*style[^>]*>[^<]*<\s*/\s*style\s*>', re.I)
-        re_br = re.compile('<br\s*?/?>')
-        re_h = re.compile('</?\w+[^>]*>')
-        re_comment = re.compile('<!--[^>]*-->')
-        s = re_cdata.sub('', htmlstr)
-        s = re_script.sub('', s)
-        s = re_style.sub('', s)
-        s = re_br.sub('\n', s)
-        s = re_h.sub('', s)
-        s = re_comment.sub('', s)
-
-        blank_line = re.compile('\n+')
-        s = blank_line.sub('\n', s)
-        s = self.re_exp(s)
-        s = self.replace_char_entity(s)
-        return s
-
-    @staticmethod
-    def re_exp(htmlstr):
-        s = re.compile(r'<[^<]+?>')
-        return s.sub('', htmlstr)
-
-    @staticmethod
-    def replace_char_entity(html_string):
-        char_entities = {'nbsp': ' ', '160': ' ',
-                         'lt': '<', '60': '<',
-                         'gt': '>', '62': '>',
-                         'amp': '&', '38': '&',
-                         'quot': '"', '34': '"', }
-
-        re_char_entity = re.compile(r'&#?(?P<name>\w+);')
-        sz = re_char_entity.search(html_string)
-        while sz:
-            entity = sz.group()
-            key = sz.group('name')
-            try:
-                html_string = re_char_entity.sub(char_entities[key], html_string, 1)
-                sz = re_char_entity.search(html_string)
-            except KeyError:
-                html_string = re_char_entity.sub('', html_string, 1)
-                sz = re_char_entity.search(html_string)
-        return html_string
-
     @staticmethod
     def fix_yml(original, html_string, target_language, source_language):
         original_no_spaces = original.lstrip()
@@ -656,8 +409,63 @@ class DeeplTranslate(object):
 
         return html_string
 
+    def filter_tags(self, htmlstr):
+        re_cdata = re.compile('//<!\[CDATA\[[^>]*//\]\]>', re.I)
+        re_script = re.compile('<\s*script[^>]*>[^<]*<\s*/\s*script\s*>', re.I)
+        re_style = re.compile('<\s*style[^>]*>[^<]*<\s*/\s*style\s*>', re.I)
+        re_br = re.compile('<br\s*?/?>')
+        re_h = re.compile('</?\w+[^>]*>')
+        re_comment = re.compile('<!--[^>]*-->')
+        s = re_cdata.sub('', htmlstr)
+        s = re_script.sub('', s)
+        s = re_style.sub('', s)
+        s = re_br.sub('\n', s)
+        s = re_h.sub('', s)
+        s = re_comment.sub('', s)
 
-if __name__ == "__main__":
-    import doctest
+        blank_line = re.compile('\n+')
+        s = blank_line.sub('\n', s)
+        s = self.re_exp(s)
+        s = self.replace_char_entity(s)
+        return s
 
-    doctest.testmod()
+    @staticmethod
+    def re_exp(htmlstr):
+        s = re.compile(r'<[^<]+?>')
+        return s.sub('', htmlstr)
+
+    @staticmethod
+    def replace_char_entity(html_string):
+        char_entities = {'nbsp': ' ', '160': ' ',
+                         'lt': '<', '60': '<',
+                         'gt': '>', '62': '>',
+                         'amp': '&', '38': '&',
+                         'quot': '"', '34': '"', }
+
+        re_char_entity = re.compile(r'&#?(?P<name>\w+);')
+        sz = re_char_entity.search(html_string)
+        while sz:
+            entity = sz.group()
+            key = sz.group('name')
+            try:
+                html_string = re_char_entity.sub(char_entities[key], html_string, 1)
+                sz = re_char_entity.search(html_string)
+            except KeyError:
+                html_string = re_char_entity.sub('', html_string, 1)
+                sz = re_char_entity.search(html_string)
+        return html_string
+
+    @staticmethod
+    def _get_translation_from_deepl(text):
+        if text == '          \\ Wie lautet Ihre Wahl?':
+            return 'Cual es tu decision?'
+        else:
+            return text
+
+
+tests = ['          \\ Wie lautet Ihre Wahl?\n\n "',
+         '          \\ Wie lautet Ihre Wahl?\\n\\n "']
+test = tests[0]
+processStrings = ProcessStrings('yes')
+processStrings.translate(test, 'es', 'fr', 'yml')
+# processStrings.original_work_distribute(test)

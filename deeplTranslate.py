@@ -118,8 +118,8 @@ class DeeplTranslateCommand(sublime_plugin.TextCommand):
                             result = translate.translate(selection, t_lang, s_lang, target_type)
                             time.sleep(0.15)
                             looping = looping + 1
-                            if looping > 201:
-                                print('exiting 201 process here. ... last line processed(' + str(cur_line + 1) + ')')
+                            if looping > 2001:
+                                print('exiting 2001 process here. ... last line processed(' + str(cur_line + 1) + ')')
                                 v.run_command('save')
                                 sublime.active_window().run_command('save')
                                 keep_moving = False
@@ -166,8 +166,8 @@ class DeeplTranslateCommand(sublime_plugin.TextCommand):
                 keep_moving = False
 
             looping = looping + 1
-            if looping > 200:
-                print('exiting 200 process here.... last line processed(' + str(cur_line + 1) + ')')
+            if looping > 2000:
+                print('exiting 2000 process here.... last line processed(' + str(cur_line + 1) + ')')
                 v.run_command('save')
                 sublime.active_window().run_command('save')
                 keep_moving = False
