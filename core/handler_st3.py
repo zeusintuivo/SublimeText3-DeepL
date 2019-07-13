@@ -5,7 +5,7 @@
 from urllib.request import HTTPHandler, HTTPSHandler
 from http.client import HTTPConnection, HTTPSConnection
 import ssl
-from .socks_st3 import *
+from socks_st3 import *
 
 
 class SocksiPyConnection(HTTPConnection):

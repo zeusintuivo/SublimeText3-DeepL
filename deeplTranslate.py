@@ -11,42 +11,33 @@ from sublime_plugin import application_command_classes
 from sublime_plugin import window_command_classes
 from sublime_plugin import text_command_classes
 
-import json
-import re
 import time
-from pprint import pprint
-if sublime.version() < '3':
-    from core.translate import *
-else:
+import re
+import json
+
+try:
+    # Python 3 assumption
     from .core.translate import *
+except ImportError:
+    # Python 2 assumption
+    from core.translate import *
+
+try:
+    # Python 3 assumption
+    from .libs.process_strings import *
+except ImportError:
+    # Python 2 assumption
+    from libs.process_strings import *
 
 settings = sublime.load_settings("deeplTranslate.sublime-settings")
 
 
 class DeeplTranslateCommand(sublime_plugin.TextCommand):
 
-    def run(self, edit,
-            proxy_enable=settings.get("proxy_enable"),
-            proxy_type=settings.get("proxy_type"),
-            proxy_host=settings.get("proxy_host"),
-            proxy_port=settings.get("proxy_port"),
-            s_lang=settings.get("source_language"),
-            t_lang=settings.get("target_language")):
-
-        if not s_lang:
-            s_lang = settings.get("source_language")
-        if not t_lang:
-            t_lang = settings.get("target_language")
-        if not proxy_enable:
-            proxy_enable = settings.get("proxy_enable")
-        if not proxy_type:
-            proxy_type = settings.get("proxy_type")
-        if not proxy_host:
-            proxy_host = settings.get("proxy_host")
-        if not proxy_port:
-            proxy_port = settings.get("proxy_port")
-        target_type = settings.get("target_type")
-        effectuate_keep_moving = settings.get("keep_moving_down")
+    def run(self, edit):
+        global settings
+        translate = DeeplTranslate(settings)
+        process_strings = ProcessStrings(translate.callback)
 
         v = self.view
         window = v.window()
@@ -107,9 +98,7 @@ class DeeplTranslateCommand(sublime_plugin.TextCommand):
 
                     selection = selection.encode('utf-8')
 
-                    translate = DeeplTranslate(proxy_enable, proxy_type, proxy_host, proxy_port, s_lang, t_lang)
-
-                    if not t_lang:
+                    if not settings.get("target_language"):
                         v.run_command("deepl_translate_to")
                         keep_moving = False
                         return
@@ -123,7 +112,13 @@ class DeeplTranslateCommand(sublime_plugin.TextCommand):
                                 keep_moving = False
                                 raise DeeplTranslateException(translate.error_codes[401])
 
-                            result = translate.translate(selection, t_lang, s_lang, target_type)
+                            result = process_strings.translate(
+                                selection,
+                                translate.target,
+                                translate.source,
+                                translate.target_type,
+                                False
+                            )
                             time.sleep(0.15)
 
                         except:
@@ -153,17 +148,18 @@ class DeeplTranslateCommand(sublime_plugin.TextCommand):
                         v.replace(edit, coordinates, result)
 
                     window.focus_view(v)
-                    if not s_lang:
+                    if not settings.get('source_language'):
                         detected = 'auto'
                     else:
-                        detected = s_lang
-                    sublime.status_message(u'Done! (translate ' + detected + ' --> ' + t_lang + ')')
+                        detected = settings.get('source_language')
+                    sublime.status_message(
+                        u'Done! (translate ' + detected + ' --> ' + settings.get("target_language") + ')')
                 else:
                     sublime.status_message(u'Nothing to translate!')
                     print('Nothing to translate!')
                     # DEBUG print('selection(' + selection + ')' )
 
-            if effectuate_keep_moving == 'no':
+            if settings.get('keep_moving_down') == 'no':
                 keep_moving = False
 
             looping = looping + 1
@@ -219,18 +215,11 @@ class DeeplTranslateCommand(sublime_plugin.TextCommand):
 class DeeplTranslateInfoCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         global settings
-        # settings = sublime.load_settings("deeplTranslate.sublime-settings")
-        source_language = settings.get("source_language")
-        target_language = settings.get("target_language")
-        proxy_enable = settings.get("proxy_enable")
-        proxy_type = settings.get("proxy_type")
-        proxy_host = settings.get("proxy_host")
-        proxy_port = settings.get("proxy_port")
 
         v = self.view
         selection = v.substr(v.sel()[0])
 
-        translate = DeeplTranslate(proxy_enable, proxy_type, proxy_host, proxy_port, source_language, target_language)
+        translate = DeeplTranslate(settings)
 
         text = (json.dumps(translate.languages, ensure_ascii=False, indent=2))
 
@@ -240,18 +229,11 @@ class DeeplTranslateInfoCommand(sublime_plugin.TextCommand):
 class DeeplTranslateToCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         global settings
-        # settings = sublime.load_settings("deeplTranslate.sublime-settings")
-        source_language = settings.get("source_language")
-        target_language = settings.get("target_language")
-        proxy_enable = settings.get("proxy_enable")
-        proxy_type = settings.get("proxy_type")
-        proxy_host = settings.get("proxy_host")
-        proxy_port = settings.get("proxy_port")
 
         v = self.view
         selection = v.substr(v.sel()[0])
 
-        translate = DeeplTranslate(proxy_enable, proxy_type, proxy_host, proxy_port, source_language, target_language)
+        translate = DeeplTranslate(settings)
 
         text = (json.dumps(translate.languages['languages'], ensure_ascii=False))
         continents = json.loads(text)
@@ -260,7 +242,7 @@ class DeeplTranslateToCommand(sublime_plugin.TextCommand):
 
         for (slug, title) in continents.items():
             lkey.append(slug)
-            ltrasl.append(title+' ['+slug+']')
+            ltrasl.append(title + ' [' + slug + ']')
 
         def on_done(index):
             if index >= 0:
@@ -317,4 +299,3 @@ class DeeplTranslateShowCommand(sublime_plugin.WindowCommand):
 
 def plugin_loaded():
     global settings
-    settings = sublime.load_settings("deeplTranslate.sublime-settings")

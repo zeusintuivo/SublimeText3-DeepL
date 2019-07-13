@@ -20,15 +20,6 @@ import json
 import random
 
 
-class DeeplTranslateException(Exception):
-    """
-    Default DeeplTranslate exception
-    >>> DeeplTranslateException("DoctestError")
-    DeeplTranslateException('DoctestError',)
-    """
-    pass
-
-
 class ProcessStrings(object):
 
     error_codes = {
@@ -39,33 +30,8 @@ class ProcessStrings(object):
         505: "TOO_MANY_LINES",
     }
 
-    def __init__(self, settings, callback=None):
-        [source_lang, target_lang, keep_moving_down, target_type, auth_key, proxy_enable, proxy_type,
-         proxy_host, proxy_port] = settings
-
+    def __init__(self, callback=None):
         self.callback = callback
-
-        self.cache = {
-            'languages': None,
-        }
-        self.api_urls = {
-            'translate': 'https://api.deepl.com/v2/translate?auth_key=' + auth_key
-        }
-        # https://api.deepl.com/v2/translate?auth_key=___&text=___&source_lang=EN&target_lang=DE&preserve_formatting=1&tag_handling=xml
-        if not source_lang:
-            source_lang = 'auto'
-        if not target_lang:
-            target_lang = 'en'
-            raise DeeplTranslateException(self.error_codes[401])
-        if proxy_enable == 'yes':
-            if not proxy_type or not proxy_host or not proxy_port:
-                raise DeeplTranslateException(self.error_codes[504])
-        self.source = source_lang
-        self.target = target_lang
-        self.proxyok = proxy_enable
-        self.proxytp = proxy_type
-        self.proxyho = proxy_host
-        self.proxypo = proxy_port
 
     def translate(self, text, target_language, source_language, formato='html', fake=True):
         original = unquote(quote(text, ''))
@@ -519,13 +485,8 @@ class ProcessStrings(object):
             return text
         if fake:
             return self._get_translation_from_fake_deepl(text.rstrip())
-        try:
-            loaded = self.callback(text.rstrip())
-            translation = self._get_translation_from_json(loaded)
-        except IOError:
-            raise DeeplTranslateException(self.error_codes[501])
-        except ValueError:
-            raise DeeplTranslateException(self.error_codes[503])
+        loaded = self.callback(text.rstrip())
+        translation = self._get_translation_from_json(loaded)
         return translation
 
     def is_json(myjson):

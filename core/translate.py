@@ -1,11 +1,8 @@
 #!/usr/bin/python
 # coding:utf-8
 # https://github.com/zeusintuivo/SublimeText3-DeepL
-from libs.fix_enters_keep import ProcessStrings
 
 __version__ = "1.0.0"
-
-import sublime
 
 try:
     # Python 3 assumption
@@ -21,16 +18,17 @@ from pprint import pprint
 import re
 import json
 import random
-if sublime.version() < '3':
+
+try:
+    # Python 3 assumption
+    from handler_st3 import *
+    from socks_st3 import *
+except ImportError:
+    # Python 2 assumption
     from urllib2 import urlopen, build_opener, Request
     from handler_st2 import *
     from socks_st2 import *
-else:
-    from .handler_st3 import *
-    from .socks_st3 import *
 
-
-from ..libs.process_strings import ProcessStrings
 
 class DeeplTranslateException(Exception):
     """
@@ -57,30 +55,37 @@ class DeeplTranslate(object):
         505: "TOO_MANY_LINES",
     }
 
-    def __init__(self, proxy_enable, proxy_type, proxy_host, proxy_port, source_lang, target_lang):
-        settings = sublime.load_settings("deeplTranslate.sublime-settings")
-        auth_key = settings.get("auth_key")
+    def __init__(self, settings):
+        self.settings = settings
+        self.source = settings.get('source_language', 'auto')
+        self.target = settings.get('target_language', 'en')
+        self.target_type = settings.get('target_type', 'plain')
+        self.proxy_ok = settings.get('proxy_enable')
+        self.proxy_tp = settings.get('proxy_type')
+        self.proxy_ho = settings.get('proxy_host')
+        self.proxy_po = settings.get('proxy_port')
+        if self.proxy_ok == 'yes':
+            if not self.proxy_tp or not self.proxy_ho or not self.proxy_po:
+                raise DeeplTranslateException(self.error_codes[504])
+        self.settings_list = [self.source,
+                              self.target,
+                              settings.get('keep_moving_down'),
+                              self.target_type,
+                              settings.get('auth_key'),
+                              self.proxy_ok,
+                              self.proxy_tp,
+                              self.proxy_ho,
+                              self.proxy_po]
         self.cache = {
             'languages': None,
         }
         self.api_urls = {
-            'translate': 'https://api.deepl.com/v2/translate?auth_key=' + auth_key
+            'translate': 'https://api.deepl.com/v2/translate?auth_key=' + settings.get("auth_key")
         }
-        # https://api.deepl.com/v2/translate?auth_key=___&text=___&source_lang=EN&target_lang=DE&preserve_formatting=1&tag_handling=xml
-        if not source_lang:
-            source_lang = 'auto'
-        if not target_lang:
-            target_lang = 'en'
-            raise DeeplTranslateException(self.error_codes[401])
-        if proxy_enable == 'yes':
-            if not proxy_type or not proxy_host or not proxy_port:
-                raise DeeplTranslateException(self.error_codes[504])
-        self.source = source_lang
-        self.target = target_lang
-        self.proxyok = proxy_enable
-        self.proxytp = proxy_type
-        self.proxyho = proxy_host
-        self.proxypo = proxy_port
+
+    @property
+    def callback(self):
+        return self._get_translation_from_deepl
 
     @property
     def languages(self, cache=True):
@@ -115,7 +120,6 @@ class DeeplTranslate(object):
 
     def build_url(self, text):
         e = quote(text, '')
-        # try:         #   other params  deepL   &source_lang=EN&target_lang=DE&preserve_formatting=1&tag_handling=xml
         s = self.api_urls['translate'] + "&preserve_formatting=1"
         if self.source == 'auto':
             return s + "&target_lang=%s&text=%s" % (self.target, e)
@@ -123,13 +127,13 @@ class DeeplTranslate(object):
             return s + "&source_lang=%s&target_lang=%s&text=%s" % (self.source, self.target, e)
 
     def select_proxy_opener(self):
-        if self.proxytp == 'socks5':
-            opener = build_opener(SocksiPyHandler(PROXY_TYPE_SOCKS5, self.proxyho, int(self.proxypo)))
+        if self.proxy_tp == 'socks5':
+            opener = build_opener(SocksiPyHandler(PROXY_TYPE_SOCKS5, self.proxy_ho, int(self.proxy_po)))
         else:
-            if self.proxytp == 'socks4':
-                opener = build_opener(SocksiPyHandler(PROXY_TYPE_SOCKS4, self.proxyho, int(self.proxypo)))
+            if self.proxy_tp == 'socks4':
+                opener = build_opener(SocksiPyHandler(PROXY_TYPE_SOCKS4, self.proxy_ho, int(self.proxy_po)))
             else:
-                opener = build_opener(SocksiPyHandler(PROXY_TYPE_HTTP, self.proxyho, int(self.proxypo)))
+                opener = build_opener(SocksiPyHandler(PROXY_TYPE_HTTP, self.proxy_ho, int(self.proxy_po)))
         return opener
 
     def _get_json5_from_deepl(self, text):
@@ -140,7 +144,7 @@ class DeeplTranslate(object):
                      'Chrome/75.0.3770.100 Safari/537.36']
         headers = {'User-Agent': headerses[random.randrange(len(headerses))]}
         request_url = self.build_url(text)
-        if self.proxyok == 'yes':
+        if self.proxy_ok == 'yes':
             opener = self.select_proxy_opener()
             # print('request_url 1:' + request_url)
             req = Request(request_url, headers=headers)
@@ -163,7 +167,7 @@ class DeeplTranslate(object):
     @staticmethod
     def _get_translation_from_json(loaded):
         translations = loaded['translations']
-        # deteced_lang = translations[0]['detected_source_language']
+        # detected_lang = translations[0]['detected_source_language']
         translation = translations[0]['text']
         print('translation')
         pprint(translation)
@@ -172,4 +176,5 @@ class DeeplTranslate(object):
 
 if __name__ == "__main__":
     import doctest
+
     doctest.testmod()
