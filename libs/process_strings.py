@@ -39,9 +39,11 @@ class ProcessStrings(object):
         505: "TOO_MANY_LINES",
     }
 
-    def __init__(self, settings):
+    def __init__(self, settings, callback=None):
         [source_lang, target_lang, keep_moving_down, target_type, auth_key, proxy_enable, proxy_type,
          proxy_host, proxy_port] = settings
+
+        self.callback = callback
 
         self.cache = {
             'languages': None,
@@ -518,60 +520,13 @@ class ProcessStrings(object):
         if fake:
             return self._get_translation_from_fake_deepl(text.rstrip())
         try:
-            loaded = self._get_json5_from_deepl(text.rstrip())
+            loaded = self.callback(text.rstrip())
             translation = self._get_translation_from_json(loaded)
         except IOError:
             raise DeeplTranslateException(self.error_codes[501])
         except ValueError:
             raise DeeplTranslateException(self.error_codes[503])
         return translation
-
-    def build_url(self, text):
-        e = quote(text, '')
-        # try:         #   other params  deepL   &source_lang=EN&target_lang=DE&preserve_formatting=1&tag_handling=xml
-        s = self.api_urls['translate'] + "&preserve_formatting=1"
-        if self.source == 'auto':
-            return s + "&target_lang=%s&text=%s" % (self.target, e)
-        else:
-            return s + "&source_lang=%s&target_lang=%s&text=%s" % (self.source, self.target, e)
-
-    def select_proxy_opener(self):
-        if self.proxytp == 'socks5':
-            opener = build_opener(SocksiPyHandler(PROXY_TYPE_SOCKS5, self.proxyho, int(self.proxypo)))
-        else:
-            if self.proxytp == 'socks4':
-                opener = build_opener(SocksiPyHandler(PROXY_TYPE_SOCKS4, self.proxyho, int(self.proxypo)))
-            else:
-                opener = build_opener(SocksiPyHandler(PROXY_TYPE_HTTP, self.proxyho, int(self.proxypo)))
-        return opener
-
-    def _get_json5_from_deepl(self, text):
-        headerses = ['Mozilla/5.0 (Windows NT 6.1; WOW64; rv:23.0) Gecko/20100101 Firefox/23.0',
-                     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:67.0) Gecko/20100101 Firefox/67.0',
-                     'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:23.0) Gecko/20100101 Firefox/67.0',
-                     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) '
-                     'Chrome/75.0.3770.100 Safari/537.36']
-        headers = {'User-Agent': headerses[random.randrange(len(headerses))]}
-        request_url = self.build_url(text)
-        if self.proxyok == 'yes':
-            opener = self.select_proxy_opener()
-            # print('request_url 1:' + request_url)
-            req = Request(request_url, headers=headers)
-            result = opener.open(req, timeout=2).read()
-            loaded = loads(result.decode('utf-8'))
-            return loaded
-        else:
-            # print('request_url 2:' + request_url)
-            try:
-                web_url = urllib.request.urlopen(request_url)
-                data = web_url.read()
-                encoding = web_url.info().get_content_charset('utf-8')
-                loaded = loads(data.decode(encoding))
-            except IOError:
-                raise DeeplTranslateException(self.error_codes[501])
-            except ValueError:
-                raise DeeplTranslateException(loaded['message'])
-            return loaded
 
     def is_json(myjson):
         try:
@@ -589,26 +544,7 @@ class ProcessStrings(object):
         pprint(translation)
         return translation
 
+    @staticmethod
+    def _unescape(text):
+        return loads('"%s"' % text)
 
-tests = {1: '          \\ Wie lautet Ihre Wahl?\n\n "',
-         2:'          \\ Wie lautet Ihre Wahl?\\n\\n "',
-         3:'<strong class=\"count-suspendable-citas\">Es ist ein Termin</strong>während dieser Abwesenheit vorgesehen.',
-         4:"              warning_html: 'Sie haben soeben %{date} %{recurring} eine Abwesenheit"
-         "                eingetragen.<br/> %{count_rdv}<br/> <span class=\"question\">Wie wollen"
-         "                Sie fortfahren?</span>"
-         "'"}
-
-test = tests[4]
-
-from settings import settings_list
-
-processStrings = ProcessStrings(settings_list())
-processStrings.translate(test, 'es', 'fr', 'yml', True)
-# processStrings.original_work_distribute(test)
-#
-# How to test:
-#
-# nodemon --watch fix_enters_keep.py --exec python fix_enters_keep.py
-#
-# nodemon --watch libs/fix_enters_keep.py --exec python libs/fix_enters_keep.py
-#
