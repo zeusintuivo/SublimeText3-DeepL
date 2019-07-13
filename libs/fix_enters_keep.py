@@ -4,7 +4,6 @@
 
 __version__ = "1.0.0"
 
-
 try:
     # Python 3 assumption
     import urllib
@@ -21,25 +20,64 @@ import json
 import random
 
 
-class ProcessStrings(object):
-    def __init__(self, proxy_enable):
-        if proxy_enable == 'yes':
-            self.proxy_enable = proxy_enable
-        self.proxy_enable = proxy_enable
+class DeeplTranslateException(Exception):
+    """
+    Default DeeplTranslate exception
+    >>> DeeplTranslateException("DoctestError")
+    DeeplTranslateException('DoctestError',)
+    """
+    pass
 
-    def translate(self, text, target_language, source_language, formato='html'):
+
+class ProcessStrings(object):
+
+    error_codes = {
+        401: "ERR_TARGET_LANGUAGE_NOT_SPECIFIED",
+        501: "ERR_SERVICE_NOT_AVAILABLE_TRY_AGAIN_OR_USE_PROXY",
+        503: "ERR_VALUE_ERROR",
+        504: "ERR_PROXY_NOT_SPECIFIED",
+        505: "TOO_MANY_LINES",
+    }
+
+    def __init__(self, settings):
+        [source_lang, target_lang, keep_moving_down, target_type, auth_key, proxy_enable, proxy_type,
+         proxy_host, proxy_port] = settings
+
+        self.cache = {
+            'languages': None,
+        }
+        self.api_urls = {
+            'translate': 'https://api.deepl.com/v2/translate?auth_key=' + auth_key
+        }
+        # https://api.deepl.com/v2/translate?auth_key=___&text=___&source_lang=EN&target_lang=DE&preserve_formatting=1&tag_handling=xml
+        if not source_lang:
+            source_lang = 'auto'
+        if not target_lang:
+            target_lang = 'en'
+            raise DeeplTranslateException(self.error_codes[401])
+        if proxy_enable == 'yes':
+            if not proxy_type or not proxy_host or not proxy_port:
+                raise DeeplTranslateException(self.error_codes[504])
+        self.source = source_lang
+        self.target = target_lang
+        self.proxyok = proxy_enable
+        self.proxytp = proxy_type
+        self.proxyho = proxy_host
+        self.proxypo = proxy_port
+
+    def translate(self, text, target_language, source_language, formato='html', fake=True):
         original = unquote(quote(text, ''))
         print('original:', original)
         # if "'" in original:
         #    original = original.replace("'", '"')
         print('orig quo:', original)
         if formato == 'plain':
-            data = self._get_translation_from_deepl(original)
+            data = self._get_translation_from_deepl(original, fake)
             data = self.filter_tags(data)
         elif formato == 'yml':
             if len(original) > 256:
                 print('1')
-                data = self.fix_too_long_text(original)
+                data = self.fix_too_long_text(original, fake)
             else:
                 print('2')
                 if self.is_it_just_a_key(original):
@@ -53,55 +91,63 @@ class ProcessStrings(object):
                         translate_this = self.obtain_second_part(original)
                         if "\\n" in translate_this:
                             print('a3c')
-                            data = saved_key + ': ' + self.fix_enters_keep(translate_this, "\\n")
+                            data = saved_key + ': ' + self.fix_enters_keep(translate_this, fake, "\\n")
                         elif "\n" in translate_this:
                             print('a3c')
-                            data = saved_key + ': ' + self.fix_enters_keep(translate_this, "\n")
+                            data = saved_key + ': ' + self.fix_enters_keep(translate_this, fake, "\n")
                         elif "'" in translate_this:
                             print('a3a')
-                            data = saved_key + ': ' + self.fix_singlequote_keep(translate_this)
+                            data = saved_key + ': ' + self.fix_singlequote_keep(translate_this, fake)
                         elif '"' in translate_this:
                             print('a3b')
-                            data = saved_key + ': ' + self.fix_doublequote_keep(translate_this)
+                            data = saved_key + ': ' + self.fix_doublequote_keep(translate_this, fake)
                         elif '<' in translate_this:
                             print('a3d')
-                            data = saved_key + ': ' + self.fix_html_keep(translate_this)
+                            data = saved_key + ': ' + self.fix_html_keep(translate_this, fake)
                         elif '%{' in original:
                             print('a4')
-                            data = saved_key + ': ' + self.fix_variable_keep(translate_this)
+                            data = saved_key + ': ' + self.fix_variable_keep(translate_this, fake)
                         else:
                             print('a5')
-                            data = saved_key + ': ' + self._get_translation_from_deepl(translate_this)
+                            data = saved_key + ': ' + self._get_translation_from_deepl(translate_this, fake)
                     else:
-                        data = self.original_work_distribute(original)
+                        data = self.original_work_distribute(original, fake)
                     data = self.fix_yml(original, data, target_language, source_language)
         else:
-            data = self._get_translation_from_deepl(text)
+            data = self._get_translation_from_deepl(text, fake)
             data = self.fix_deepl(data)
         return data
 
-    def original_work_distribute(self, original):
+    def original_work_distribute(self, original, fake):
         if "\\n" in original:
             print('c3c', original)
-            return self.fix_enters_keep(original, "\\n")
+            return self.fix_enters_keep(original, fake, "\\n")
         elif "\n" in original:
             print('c3c', original)
-            return self.fix_enters_keep(original, "\n")
+            return self.fix_enters_keep(original, fake, "\n")
         elif "'" in original:
             print('c3a')
-            return self.fix_singlequote_keep(original)
+            if '<' in original:
+                print('c3axd')
+                return self.fix_html_keep(original, fake)
+            else:
+                return self.fix_singlequote_keep(original, fake)
         elif '"' in original:
             print('c3b')
-            return self.fix_doublequote_keep(original)
+            if '<' in original:
+                print('c3bxd')
+                return self.fix_html_keep(original, fake)
+            else:
+                return self.fix_doublequote_keep(original, fake)
         elif '<' in original:
             print('c3d')
-            return self.fix_html_keep(original)
+            return self.fix_html_keep(original, fake)
         elif '%{' in original:
             print('c4')
-            return self.fix_variable_keep(original)
+            return self.fix_variable_keep(original, fake)
         else:
             print('c5 _get_translation_from_deepl', original)
-            return self._get_translation_from_deepl(original)
+            return self._get_translation_from_deepl(original, fake)
 
     @staticmethod
     def starts_with_key(original):
@@ -136,7 +182,7 @@ class ProcessStrings(object):
     def obtain_second_part(original):
         print(40)
         first_source_colon = original.find(':')
-        second_part = original[(first_source_colon+1):]
+        second_part = original[(first_source_colon + 1):]
         print('has second part:(' + second_part + ')')
         # empty second meaning, then is a like == key: or key:>  or key: |
         return second_part.lstrip().rstrip()
@@ -164,7 +210,7 @@ class ProcessStrings(object):
                 return True
         return False
 
-    def fix_too_long_text(self, original):
+    def fix_too_long_text(self, original, fake):
         sentence_data = original
         if len(original) > 256:
             sentence_data = ""
@@ -172,15 +218,15 @@ class ProcessStrings(object):
             for sentence in split_sentences:
                 if '<' in original:
                     print('23')
-                    sentence_data = sentence_data + self.fix_html_keep(sentence)
+                    sentence_data = sentence_data + self.fix_html_keep(sentence, fake)
                 elif '%{' in original:
                     print('24')
-                    sentence_data = sentence_data + self.fix_variable_keep(sentence)
+                    sentence_data = sentence_data + self.fix_variable_keep(sentence, fake)
                 else:
-                    sentence_data = sentence_data + self._get_translation_from_deepl(sentence)
+                    sentence_data = sentence_data + self._get_translation_from_deepl(sentence, fake)
         return sentence_data
 
-    def fix_variable_keep(self, sentence):
+    def fix_variable_keep(self, sentence, fake):
         sentence_data = ""
         split_percent = sentence.split('%{')
         splitted_trans = ""
@@ -208,13 +254,13 @@ class ProcessStrings(object):
                     if second_part_split in (None, ''):
                         splited_data = ''
                     else:
-                        splited_data = self._get_translation_from_deepl(second_part_split)
+                        splited_data = self._get_translation_from_deepl(second_part_split, fake)
                     if count_split == 0:
                         splitted_trans = splitted_trans + cut_other_part[0] + '} ' + splited_data
                     else:
                         splitted_trans = splitted_trans + ' %{' + cut_other_part[0] + '} ' + splited_data
                 else:
-                    splited_data = self._get_translation_from_deepl(splitted)
+                    splited_data = self._get_translation_from_deepl(splitted, fake)
                     splitted_trans = splitted_trans + splited_data
                 count_split = count_split + 1
         if count_split == 0:
@@ -223,7 +269,7 @@ class ProcessStrings(object):
             sentence_data = splitted_trans
         return sentence_data
 
-    def fix_singlequote_keep(self, sentence):
+    def fix_singlequote_keep(self, sentence, fake):
         sentence_data = ""
         split_percent = sentence.split("'")
         splitted_trans = ""
@@ -232,7 +278,7 @@ class ProcessStrings(object):
             if splitted in (None, ''):
                 splitted_trans = splitted_trans + "'"
             else:
-                splited_data = self.original_work_distribute(splitted)
+                splited_data = self.original_work_distribute(splitted, fake)
                 splitted_trans = splitted_trans + splited_data
                 count_split = count_split + 1
         if count_split == 0:
@@ -241,7 +287,7 @@ class ProcessStrings(object):
             sentence_data = splitted_trans
         return sentence_data
 
-    def fix_doublequote_keep(self, sentence):
+    def fix_doublequote_keep(self, sentence, fake):
         sentence_data = ""
         split_percent = sentence.split('"')
         splitted_trans = ""
@@ -250,7 +296,7 @@ class ProcessStrings(object):
             if splitted in (None, ''):
                 splitted_trans = splitted_trans + '"'
             else:
-                splited_data = self.original_work_distribute(splitted)
+                splited_data = self.original_work_distribute(splitted, fake)
                 splitted_trans = splitted_trans + splited_data
                 count_split = count_split + 1
         if count_split == 0:
@@ -259,7 +305,7 @@ class ProcessStrings(object):
             sentence_data = splitted_trans
         return sentence_data
 
-    def fix_enters_keep(self, sentence, tipo="\n"):
+    def fix_enters_keep(self, sentence, fake, tipo="\n"):
         print("fix_" + tipo + "_enters_keep", sentence)
         sentence_data = ""
         split_percent = sentence.split(tipo)
@@ -274,7 +320,7 @@ class ProcessStrings(object):
                 splitted_trans = splitted_trans + tipo
             else:
                 print("work distribute", splitted)
-                splited_data = self.original_work_distribute(splitted)
+                splited_data = self.original_work_distribute(splitted, fake)
                 print("work translated", splited_data)
 
                 print("count_split", count_split)
@@ -292,7 +338,7 @@ class ProcessStrings(object):
         print("sentence_data", sentence_data)
         return sentence_data
 
-    def fix_html_keep(self, sentence):
+    def fix_html_keep(self, sentence, fake):
         sentence_data = ""
         split_percent = sentence.split('<')
         splitted_trans = ""
@@ -320,14 +366,14 @@ class ProcessStrings(object):
                     if second_part_split in (None, ''):
                         splited_data = ''
                     else:
-                        splited_data = self.fix_variable_keep(second_part_split)
+                        splited_data = self.fix_variable_keep(second_part_split, fake)
                         # splited_data = self._get_translation_from_deepl(second_part_split)
                     if count_split == 0:
                         splitted_trans = splitted_trans + cut_other_part[0] + '> ' + splited_data
                     else:
                         splitted_trans = splitted_trans + ' <' + cut_other_part[0] + '> ' + splited_data
                 else:
-                    splited_data = self.fix_variable_keep(splitted)
+                    splited_data = self.fix_variable_keep(splitted, fake)
                     # splited_data = self._get_translation_from_deepl(splitted)
                     splitted_trans = splitted_trans + splited_data
                 count_split = count_split + 1
@@ -360,7 +406,8 @@ class ProcessStrings(object):
                 sz = s.search(html_string)
         # this is a key     in yml --> last_connection_html:
         # this is not a key in yml --> Dernière connexion sur le compte :
-        if ':' in original and ':' in html_string and len(original_key_is) >= 2 and len(key_has_spaces) == 1:  # fix keep keys names
+        if ':' in original and ':' in html_string and len(original_key_is) >= 2 and len(
+                key_has_spaces) == 1:  # fix keep keys names
             print('yml key protection:' + original + ')')
             first_source_colon = original.find(':')
             keep_source_definition = original[:first_source_colon]
@@ -373,11 +420,11 @@ class ProcessStrings(object):
         print('original(' + original + ')')
         # print('source_language(' + source_language + ')')
         # print('target_language(' + target_language + ')')
-        if '{' in original and '{' in html_string and '%' in original and '%' in html_string:   # fix  % { to  %{
+        if '{' in original and '{' in html_string and '%' in original and '%' in html_string:  # fix  % { to  %{
             html_string = html_string.replace('% {', ' %{')
         if '},' in original and '} ,' in html_string:  # fix  } , to  },
             html_string = html_string.replace('} ,', '},')
-        if ': >' in original and ':>' in html_string:      # fix :> to : >
+        if ': >' in original and ':>' in html_string:  # fix :> to : >
             html_string = html_string.replace(':>', ': >')
 
         # restore white spaces
@@ -456,16 +503,112 @@ class ProcessStrings(object):
         return html_string
 
     @staticmethod
-    def _get_translation_from_deepl(text):
+    def _get_translation_from_fake_deepl(text):
+        if text == '<strong class="count-suspendable-citas">Es ist ein Termin</strong>während dieser ' \
+                   'Abwesenheit vorgesehen.':
+            return ' <clase fuerte=conteo-suspendible-citas> Es una cita </strong>durante esta ausencia.'
         if text == '          \\ Wie lautet Ihre Wahl?':
             return 'Cual es tu decision?'
         else:
+            return 'translated(' + text + ')'
+
+    def _get_translation_from_deepl(self, text, fake):
+        if text.lstrip().rstrip() in (None, '', '>', '|', '|-', '"', "'", '.', ',', ';', ':'):
             return text
+        if fake:
+            return self._get_translation_from_fake_deepl(text.rstrip())
+        try:
+            loaded = self._get_json5_from_deepl(text.rstrip())
+            translation = self._get_translation_from_json(loaded)
+        except IOError:
+            raise DeeplTranslateException(self.error_codes[501])
+        except ValueError:
+            raise DeeplTranslateException(self.error_codes[503])
+        return translation
+
+    def build_url(self, text):
+        e = quote(text, '')
+        # try:         #   other params  deepL   &source_lang=EN&target_lang=DE&preserve_formatting=1&tag_handling=xml
+        s = self.api_urls['translate'] + "&preserve_formatting=1"
+        if self.source == 'auto':
+            return s + "&target_lang=%s&text=%s" % (self.target, e)
+        else:
+            return s + "&source_lang=%s&target_lang=%s&text=%s" % (self.source, self.target, e)
+
+    def select_proxy_opener(self):
+        if self.proxytp == 'socks5':
+            opener = build_opener(SocksiPyHandler(PROXY_TYPE_SOCKS5, self.proxyho, int(self.proxypo)))
+        else:
+            if self.proxytp == 'socks4':
+                opener = build_opener(SocksiPyHandler(PROXY_TYPE_SOCKS4, self.proxyho, int(self.proxypo)))
+            else:
+                opener = build_opener(SocksiPyHandler(PROXY_TYPE_HTTP, self.proxyho, int(self.proxypo)))
+        return opener
+
+    def _get_json5_from_deepl(self, text):
+        headerses = ['Mozilla/5.0 (Windows NT 6.1; WOW64; rv:23.0) Gecko/20100101 Firefox/23.0',
+                     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:67.0) Gecko/20100101 Firefox/67.0',
+                     'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:23.0) Gecko/20100101 Firefox/67.0',
+                     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) '
+                     'Chrome/75.0.3770.100 Safari/537.36']
+        headers = {'User-Agent': headerses[random.randrange(len(headerses))]}
+        request_url = self.build_url(text)
+        if self.proxyok == 'yes':
+            opener = self.select_proxy_opener()
+            # print('request_url 1:' + request_url)
+            req = Request(request_url, headers=headers)
+            result = opener.open(req, timeout=2).read()
+            loaded = loads(result.decode('utf-8'))
+            return loaded
+        else:
+            # print('request_url 2:' + request_url)
+            try:
+                web_url = urllib.request.urlopen(request_url)
+                data = web_url.read()
+                encoding = web_url.info().get_content_charset('utf-8')
+                loaded = loads(data.decode(encoding))
+            except IOError:
+                raise DeeplTranslateException(self.error_codes[501])
+            except ValueError:
+                raise DeeplTranslateException(loaded['message'])
+            return loaded
+
+    def is_json(myjson):
+        try:
+            json_object = json.loads(myjson)
+        except ValueError:
+            return False
+        return True
+
+    @staticmethod
+    def _get_translation_from_json(loaded):
+        translations = loaded['translations']
+        # deteced_lang = translations[0]['detected_source_language']
+        translation = translations[0]['text']
+        print('translation')
+        pprint(translation)
+        return translation
 
 
-tests = ['          \\ Wie lautet Ihre Wahl?\n\n "',
-         '          \\ Wie lautet Ihre Wahl?\\n\\n "']
-test = tests[0]
-processStrings = ProcessStrings('yes')
-processStrings.translate(test, 'es', 'fr', 'yml')
+tests = {1: '          \\ Wie lautet Ihre Wahl?\n\n "',
+         2:'          \\ Wie lautet Ihre Wahl?\\n\\n "',
+         3:'<strong class=\"count-suspendable-citas\">Es ist ein Termin</strong>während dieser Abwesenheit vorgesehen.',
+         4:"              warning_html: 'Sie haben soeben %{date} %{recurring} eine Abwesenheit"
+         "                eingetragen.<br/> %{count_rdv}<br/> <span class=\"question\">Wie wollen"
+         "                Sie fortfahren?</span>"
+         "'"}
+
+test = tests[4]
+
+from settings import settings_list
+
+processStrings = ProcessStrings(settings_list())
+processStrings.translate(test, 'es', 'fr', 'yml', True)
 # processStrings.original_work_distribute(test)
+#
+# How to test:
+#
+# nodemon --watch fix_enters_keep.py --exec python fix_enters_keep.py
+#
+# nodemon --watch libs/fix_enters_keep.py --exec python libs/fix_enters_keep.py
+#
