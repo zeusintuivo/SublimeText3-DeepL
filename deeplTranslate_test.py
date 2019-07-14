@@ -1,13 +1,21 @@
 #!/usr/bin/python
 # coding:utf-8
 # https://github.com/zeusintuivo/SublimeText3-DeepL
-from process_strings import ProcessStrings
+if '2' < '3':
+    from core.translate import *
+    from libs.process_strings import *
+    from libs.settings import settings
+else:
+    from .core.translate import *
+    from .libs.process_strings import *
+    from .libs.settings import settings
+
 import unittest
 
 __version__ = "1.0.0"
 
 
-class TestProcessStrings(unittest.TestCase):
+class TestDeeplTranslate(unittest.TestCase):
     tests = {1: '          \\ Wie lautet Ihre Wahl?\n\n "',
              2: '          \\ Wie lautet Ihre Wahl?\\n\\n "',
              3: '<strong class=\"do-not-translate-this\">Es ist ein Termin</strong>während dieser '
@@ -30,7 +38,7 @@ class TestProcessStrings(unittest.TestCase):
              12: '        title: Centroderentas “responds to a specific need of society, it is practical and '
                  'user-friendly, has an enormous amount of growth potential"'
              }
-
+    translate = DeeplTranslate(settings)
     process_strings = ProcessStrings()
 
     # def test_enters(self):
@@ -105,7 +113,6 @@ if __name__ == '__main__':
 #
 # How to test:
 #
-# nodemon --watch process_strings_test.py --exec python process_strings_test.py
+# nodemon --watch deeplTranslate_test.py --watch libs/process_strings.py --watch core/translate.py --exec python deeplTranslate_test.py
 #
-# nodemon --watch libs/process_strings_test.py --exec python libs/process_strings_test.py
 #

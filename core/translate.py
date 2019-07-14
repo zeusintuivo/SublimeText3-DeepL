@@ -4,7 +4,18 @@
 
 __version__ = "1.0.0"
 
-import sublime
+try:
+    # Sublime environment assumption
+    import sublime
+except ImportError:
+    # Python 2 assumption
+    class Sublime(object):
+        @staticmethod
+        def version():
+            return '2'
+        pass
+    sublime = Sublime()
+
 
 try:
     # Python 3 assumption
