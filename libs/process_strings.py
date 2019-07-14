@@ -8,16 +8,24 @@ try:
     # Python 3 assumption
     import urllib
     from urllib.request import urlopen, build_opener, Request
-    from urllib.parse import urlencode, quote, unquote
+    from urllib.parse import urlencode, quote
 except ImportError:
     # Python 2 assumption
-    from urllib import urlopen, urlencode, quote, unquote
+    from urllib import urlopen, urlencode, quote
+
+try:
+    # Python 3 assumption
+    from urllib.parse import unquote
+except ImportError:
+    # Python 2 assumption
+    from urllib import unquote
 
 from json import loads
 from pprint import pprint
 import re
 import json
 import random
+import os
 
 import sqlite3
 
@@ -35,11 +43,13 @@ class ProcessStrings(object):
     def translate(self, text, target_language, source_language, formato='html', fake=True):
         self.target_language = target_language
         self.source_language = source_language
-        self.db = sqlite3.connect(self.filename) # create table if not exists
-        self.cur = self.db.execute('PRAGMA encoding = "UTF-8"')
+        self.db = sqlite3.connect(self.filename)  # create table if not exists
+        self.cur = self.db.cursor()
+        self.cur.execute('PRAGMA encoding = "UTF-8"')
+        self.cur.execute('CREATE TABLE IF NOT EXISTS keyvals (key TEXT PRIMARY KEY, value TEXT)')
         self.db.commit()
-        self.cur = self.db.execute('CREATE TABLE IF NOT EXISTS keyvals (key TEXT PRIMARY KEY, value TEXT)')
-        self.db.commit()
+        os.chdir(os.path.dirname(__file__))
+        self.cwd = os.getcwd()
 
         original = unquote(quote(text, ''))
 
@@ -92,6 +102,7 @@ class ProcessStrings(object):
         else:
             data = self._process_call_to_translate(text, fake)
             data = self.fix_deepl(data)
+        self.db.close()
         return data
 
     def original_work_distribute(self, original, fake):
@@ -504,6 +515,24 @@ class ProcessStrings(object):
             return 'translated(' + text + ')'
 
     def _cached_responses(self, trimo):
+        '''
+        import sqlite3
+        from urllib.parse import unquote, quote
+        db = sqlite3.connect('de-es.dic')
+        cur = db.cursor()
+        cur.execute('PRAGMA encoding = "UTF-8"')
+        query = cur.execute('SELECT key, value FROM keyvals WHERE key="bis"')
+        db.commit()
+        found = query.fetchone()
+        found
+        cached_key = unquote(quote(found[0], ''))
+        cached_key
+        cached_content = unquote(quote(found[1], ''))
+        cached_content
+        db.close()
+        :param trimo:
+        :return:
+        '''
         if self.source_language == 'de' and self.target_language == 'es':
             if trimo == '<strong class="count-suspendable-citas">Es ist ein Termin</strong>während dieser ' \
                         'Abwesenheit vorgesehen.':
@@ -511,22 +540,29 @@ class ProcessStrings(object):
             if trimo == 'Sie haben soeben':
                 return [True, 'Acabas de']
             if trimo == 'eine Abwesenheit eingetragen':
-                return [True,  'una auscencia inscrito']
+                return [True, 'una auscencia inscrito']
             if trimo == 'Wie wollen Sie fortfahren?':
-                return [True,  '¿Cómo piensa proceder?']
+                return [True, '¿Cómo piensa proceder?']
             if trimo == 'eingetragen':
-                return [True,  'está registrado']
+                return [True, 'está registrado']
             if trimo == '\\ Wie lautet Ihre Wahl?':
-                return [True,   'Cual es tu decision?']
-        query = self.db.execute('SELECT key, value FROM keyvals WHERE key="' + (trimo) + '"')
+                return [True, 'Cual es tu decision?']
+        self.cur.execute('PRAGMA encoding = "UTF-8"')
+        query = self.cur.execute('SELECT key, value FROM keyvals WHERE key="' + (trimo) + '"')
+        self.db.commit()
+        print('query key', 'SELECT key, value FROM keyvals WHERE key="' + (trimo) + '"' )
+        print('fetchone?')
         found = query.fetchone()
+        print('found?')
         if found:
-            cached_key = unquote(quote(found[0].decode('utf-8'), ''))
+            print('cached key found key?')
+            cached_key = unquote(quote(found[0], ''))
             print('found key', cached_key)
             if cached_key == trimo:
                 cached_content = unquote(quote(found[1], ''))
                 print('found content', cached_content)
                 return [True, cached_content]
+        print('not found?', found)
         return [False, trimo]
 
     @staticmethod
@@ -546,6 +582,7 @@ class ProcessStrings(object):
         print('trimo ("' + lefty + '")' + str(left_diff) + '("' + trimo + '")' + str(right_diff) + '("' + righty + '")')
 
         return [lefty, righty, trimo]
+
     '''
     Python has many variations off of the main three modes, these three modes are:
     
@@ -581,7 +618,9 @@ class ProcessStrings(object):
         
         REF: https://www.quora.com/How-do-I-write-a-dictionary-to-a-file-in-Python
     '''
+
     def cache_translation(self, trimo, translation):
+        print('caching pwd(' + self.cwd + '): "' + trimo + '", "' + translation + '"')
         self.cur.execute('INSERT OR IGNORE INTO keyvals VALUES ("' + trimo + '", "' + translation + '")')
         # cur.rowcount can be used to confirm the number of inserted items
         self.db.commit()
@@ -614,12 +653,14 @@ class ProcessStrings(object):
             print('  uni ("' + text + '")')
             return text
         [was_cached, translation] = self._cached_responses(trimo)
+        print('cached returned', [was_cached, translation])
         if not was_cached:
             if fake:
                 translation = self._process_fake_to_translate(trimo)
             else:
+                print('calling it', trimo)
                 translation = self.callback(trimo)
-        self.cache_translation(trimo, translation)
+                self.cache_translation(trimo, translation)
         retrimmed = lefty + translation + righty
         print('  got ("' + translation + '")')
         print('retrim("' + retrimmed + '")')

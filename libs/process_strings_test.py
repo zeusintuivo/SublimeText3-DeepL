@@ -23,8 +23,10 @@ class TestProcessStrings(unittest.TestCase):
              7: "                eingetragen.<br/> %{count_rdv}<br/> <span class=\"question\">"
                 "Wie wollen Sie fortfahren?</span>",
              8: "  warning_html: 'Sie haben soeben %{date} %{recurring} eine Abwesenheit eingetragen.<br/> "
-                "%{count_rdv}<br/> <span class=\"question\">Wie wollen Sie fortfahren?</span>"
+                "%{count_rdv}<br/> <span class=\"question\">Wie wollen Sie fortfahren?</span>",
 
+             9: '                    on_same_day: Sie haben soeben am %{date} von %{start_time} bis',
+             10: 'Sie haben soeben am',
              }
 
     process_strings = ProcessStrings()
@@ -70,6 +72,11 @@ class TestProcessStrings(unittest.TestCase):
         self.assertEqual(self.process_strings.translate(self.tests[8], 'es', 'de', 'yml', True),
                          '  warning_html: \'Acabas de %{date} %{recurring} una auscencia inscrito.<br/> '
                          '%{count_rdv}<br/> <span class="question">\xc2\xbfC\xc3\xb3mo piensa proceder?</span>')
+
+    def test_one_line_now_what(self):
+        self.assertEqual(self.process_strings.translate(self.tests[9], 'es', 'de', 'yml', True),
+                         '                    on_same_day: Acabas de llegar al %{date} antes de %{start_time} '
+                         'para cuando')
 
 
 if __name__ == '__main__':
