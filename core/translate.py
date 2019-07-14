@@ -4,27 +4,40 @@
 
 __version__ = "1.0.0"
 
+import platform
+python_version=platform.python_version()
+
+# try:
+#     # Sublime environment assumption
+#     import sublime
+# except ImportError:
+#     # Outside of Sublime assumption, create a dummy Sublime
+#     class Sublime(object):
+#         @staticmethod
+#         def version():
+#             return '3'
+#         pass
+#     sublime = Sublime()
+
+
 try:
-    # Sublime environment assumption
-    import sublime
+    # Outside Sublime Text assumption
+    import chardet  # required to install pip3 install chardet  and pip install chardet
 except ImportError:
+    # Inside Sublime Text assumption
+    import chardet  # required to install pip3 install chardet  and pip install chardet
+
+# expectation  '3.7.3' < '3' or '2.7.11' < '3'
+if python_version < '3':
     # Python 2 assumption
-    class Sublime(object):
-        @staticmethod
-        def version():
-            return '2'
-        pass
-    sublime = Sublime()
-
-
-try:
+    from urllib import urlopen, urlencode, quote, unquote
+    import urllib
+else:
     # Python 3 assumption
     import urllib
     from urllib.request import urlopen, build_opener, Request
     from urllib.parse import urlencode, quote, unquote
-except ImportError:
-    # Python 2 assumption
-    from urllib import urlopen, urlencode, quote, unquote
+
 
 from json import loads
 from pprint import pprint
@@ -33,11 +46,15 @@ import json
 import random
 from pprint import pprint
 
-if sublime.version() < '3':
+# expectation  '3.7.3' < '3' or '2.7.11' < '3'
+if python_version < '3':
+    # Python 2 assumption
+    # if sublime.version() < '3':
     from urllib2 import urlopen, build_opener, Request
     from handler_st2 import *
     from socks_st2 import *
 else:
+    # Python 3 assumption
     from .handler_st3 import *
     from .socks_st3 import *
 
@@ -65,10 +82,14 @@ class DeeplTranslate(object):
         503: "ERR_VALUE_ERROR",
         504: "ERR_PROXY_NOT_SPECIFIED",
         505: "TOO_MANY_LINES",
+        506: "SETTINGS_NOT_LOADED",
     }
 
     def __init__(self, settings):
-        print('auth_key:', settings.get('auth_key'))
+        try:
+            print('auth_key:', settings.get('auth_key'))
+        except AttributeError:
+            raise DeeplTranslateException(self.error_codes[506])
         self.settings = settings
         self.source = settings.get('source_language', 'auto')
         self.target = settings.get('target_language', 'en')
@@ -168,16 +189,32 @@ class DeeplTranslate(object):
             return loaded
         else:
             # print('request_url 2:' + request_url)
-            try:
-                web_url = urllib.request.urlopen(request_url)
-                data = web_url.read()
-                encoding = web_url.info().get_content_charset('utf-8')
-                loaded = loads(data.decode(encoding))
-            except IOError:
-                raise DeeplTranslateException(self.error_codes[501])
-            except ValueError:
-                raise DeeplTranslateException(loaded['message'])
-            return loaded
+            if python_version < '3':
+                # Python 2 assumption
+                try:
+                    web_url = urllib.urlopen(request_url)
+                    data = web_url.read()
+                    encoding = chardet.detect(data)  # expected return {'encoding': 'GB2312', 'confidence': 0.99}
+                    loaded = loads(data.decode(encoding['encoding']))
+                except IOError:
+                    raise DeeplTranslateException(self.error_codes[501])
+                except ValueError:
+                    raise DeeplTranslateException(loaded['message'])
+                return loaded
+            else:
+                # Python 3 assumption
+                try:
+                    web_url = urllib.request.urlopen(request_url)
+                    data = web_url.read()
+                    encoding = web_url.info().get_content_charset('utf-8')
+                    loaded = loads(data.decode(encoding))
+                except IOError:
+                    raise DeeplTranslateException(self.error_codes[501])
+                except ValueError:
+                    raise DeeplTranslateException(loaded['message'])
+                return loaded
+
+
 
     @staticmethod
     def _get_translation_from_json(loaded):
@@ -185,6 +222,7 @@ class DeeplTranslate(object):
         # detected_lang = translations[0]['detected_source_language']
         translation = translations[0]['text']
         print('translation 1 ')
+        translation = unquote(quote(translation, ''))
         pprint(translation)
         return translation
 

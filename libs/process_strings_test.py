@@ -99,9 +99,6 @@ class TestProcessStrings(unittest.TestCase):
 if __name__ == '__main__':
     unittest.main()
 
-# "              warning_html: 'Acabas de %{date}   %{recurring}  una ausencia
-#                está registrado. <br/>   %{count_rdv}  <br/>  span class=interrogante>¿Cómo se hace?
-#                ¿Continúas? </span> "
 #
 # How to test:
 #

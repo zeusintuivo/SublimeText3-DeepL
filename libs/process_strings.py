@@ -4,6 +4,8 @@
 
 __version__ = "1.0.0"
 
+
+
 try:
     # Python 3 assumption
     import urllib
@@ -20,11 +22,17 @@ except ImportError:
     # Python 2 assumption
     from urllib import unquote
 
+try:
+    # Outside Sublime Text assumption
+    import chardet  # required to install pip3 install chardet  and pip install chardet
+except ImportError:
+    # Inside Sublime Text assumption
+    import chardet  # required to install pip3 install chardet  and pip install chardet
+
 from json import loads
 from pprint import pprint
 import re
 import json
-import random
 import os
 
 import sqlite3
@@ -35,6 +43,10 @@ class ProcessStrings(object):
                   '>', '|', '|-', '.', ',', ';', ':')
     target_language = ''
     source_language = ''
+    saved = ''
+    cwd = ''
+    db = ''
+    cur = ''
 
     def __init__(self, callback=None):
 
@@ -50,8 +62,16 @@ class ProcessStrings(object):
         self.db.commit()
         os.chdir(os.path.dirname(__file__))
         self.cwd = os.getcwd()
-
-        original = unquote(quote(text, ''))
+        self.saved = unquote(quote(text, ''))
+        # original_decoded = self.decode_charset(self.saved)
+        # original2 = unquote(quote(original_decoded.encode('utf-8'), ''))
+        # original = repr(original2)
+        original = self.saved
+        print('original 0(' + original[0] + ')')
+        print('original -1(' + original[-1] + ')')
+        print('original *(' + original + ')')
+        print('original [](' + original[1:-1] + ')')
+        # original = unquote(quote(origina, ''))
 
         print('original:', original)
         # if "'" in original:
@@ -98,6 +118,8 @@ class ProcessStrings(object):
                             data = saved_key + ': ' + self._process_call_to_translate(translate_this, fake)
                     else:
                         data = self.original_work_distribute(original, fake)
+                        print('data 9(' + data[0] + ')')
+                    print('data 10(' + data[0] + ')')
                     data = self.fix_yml(original, data)
         else:
             data = self._process_call_to_translate(text, fake)
@@ -136,7 +158,11 @@ class ProcessStrings(object):
             return self.fix_variable_keep(original, fake)
         else:
             print('c5 _process_call_to_translate', original)
-            return self._process_call_to_translate(original, fake)
+            distributed = self._process_call_to_translate(original, fake)
+            if distributed not in (None, ''):
+                print('distributed 10(' + distributed[0] + ')')
+                print('distributed 10(' + distributed + ')')
+            return distributed
 
     @staticmethod
     def starts_with_key(original):
@@ -380,7 +406,29 @@ class ProcessStrings(object):
         return sentence_data
 
     @staticmethod
-    def fix_yml(original, html_string):
+    def remove_damaged_quotes(original, text):
+        if original[0] != "'" and original[-1] != "'" and text[0] == "'" and text[-1] == "'":
+            return text[1:-1]
+        if original[0] != '"' and original[-1] != '"' and text[0] == '"' and text[-1] == '"':
+            return text[1:-1]
+        return text
+
+    @staticmethod
+    def fix_yml(original, html_damaged):
+        print('original 0(' + original[0] + ')')
+        print('original -1(' + original[-1] + ')')
+        print('original *(' + original + ')')
+        print('original [](' + original[1:-1] + ')')
+        print('html_damaged 0(' + html_damaged[0] + ')')
+        print('html_damaged -1(' + html_damaged[-1] + ')')
+        print('html_damaged *(' + html_damaged + ')')
+        print('html_damaged [](' + html_damaged[1:-1] + ')')
+        html_string = ProcessStrings.remove_damaged_quotes(original, html_damaged)
+        print('html_string 0(' + html_string[0] + ')')
+        print('html_string -1(' + html_string[-1] + ')')
+        print('html_string *(' + html_string + ')')
+        print('html_string [](' + html_string[1:-1] + ')')
+
         original_no_spaces = original.lstrip()
         original_key_is = original_no_spaces.split(':')
         key_has_spaces = original_key_is[0].split(' ')
@@ -402,6 +450,7 @@ class ProcessStrings(object):
                 sz = s.search(html_string)
         # this is a key     in yml --> last_connection_html:
         # this is not a key in yml --> Dernière connexion sur le compte :
+        print('html_string 1(' + html_string[0] + ')')
         print('html_string 1(' + html_string + ')')
         if ':' in original and ':' in html_string and len(original_key_is) >= 2 and len(
                 key_has_spaces) == 1:  # fix keep keys names
@@ -548,17 +597,19 @@ class ProcessStrings(object):
             if trimo == '\\ Wie lautet Ihre Wahl?':
                 return [True, 'Cual es tu decision?']
         self.cur.execute('PRAGMA encoding = "UTF-8"')
-        query = self.cur.execute('SELECT key, value FROM keyvals WHERE key="' + (trimo) + '"')
+        query = self.cur.execute("SELECT key, value FROM keyvals WHERE key = '%s'" % trimo)
         self.db.commit()
-        print('query key', 'SELECT key, value FROM keyvals WHERE key="' + (trimo) + '"' )
+        print('query key', "SELECT key, value FROM keyvals WHERE key = '%s'" % trimo)
         print('fetchone?')
         found = query.fetchone()
         print('found?')
         if found:
             print('cached key found key?')
+            # decoded_key = self.decode_charset()
             cached_key = unquote(quote(found[0], ''))
             print('found key', cached_key)
             if cached_key == trimo:
+                # decoded_value = self.decode_charset(found[1])
                 cached_content = unquote(quote(found[1], ''))
                 print('found content', cached_content)
                 return [True, cached_content]
@@ -621,9 +672,25 @@ class ProcessStrings(object):
 
     def cache_translation(self, trimo, translation):
         print('caching pwd(' + self.cwd + '): "' + trimo + '", "' + translation + '"')
-        self.cur.execute('INSERT OR IGNORE INTO keyvals VALUES ("' + trimo + '", "' + translation + '")')
+        trimo_encoded = self.encode_charset(trimo)
+        translation_encoded = self.encode_charset(translation)
+        self.cur.execute('INSERT OR IGNORE INTO keyvals VALUES (?,?)', (unquote(trimo), unquote(translation)))
         # cur.rowcount can be used to confirm the number of inserted items
         self.db.commit()
+
+    @staticmethod
+    def encode_charset(text):
+        encoded = u' '.join(text).encode('utf-8').strip()  # encode(encoding='UTF-8', errors='strict')
+        return str(encoded)
+
+    @staticmethod
+    def decode_charset(trimo):
+        encoding = chardet.detect(trimo)  # expected return {'encoding': 'GB2312', 'confidence': 0.99}
+        print('encoding trimo', encoding['encoding'])
+        jsonified = json.dumps(trimo)
+        decoded = loads(jsonified.decode(encoding['encoding']))
+        print('decoded trimo', decoded)
+        return decoded
 
     @property
     def filename(self):
@@ -662,7 +729,9 @@ class ProcessStrings(object):
                 translation = self.callback(trimo)
                 self.cache_translation(trimo, translation)
         retrimmed = lefty + translation + righty
+        print('  got ("' + translation[0] + '")')
         print('  got ("' + translation + '")')
+        print('retrim("' + retrimmed[0] + '")')
         print('retrim("' + retrimmed + '")')
         return retrimmed
 
