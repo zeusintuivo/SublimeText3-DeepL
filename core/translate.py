@@ -4,6 +4,8 @@
 
 __version__ = "1.0.0"
 
+import sublime
+
 try:
     # Python 3 assumption
     import urllib
@@ -18,16 +20,15 @@ from pprint import pprint
 import re
 import json
 import random
+from pprint import pprint
 
-try:
-    # Python 3 assumption
-    from handler_st3 import *
-    from socks_st3 import *
-except ImportError:
-    # Python 2 assumption
+if sublime.version() < '3':
     from urllib2 import urlopen, build_opener, Request
     from handler_st2 import *
     from socks_st2 import *
+else:
+    from .handler_st3 import *
+    from .socks_st3 import *
 
 
 class DeeplTranslateException(Exception):
@@ -56,6 +57,7 @@ class DeeplTranslate(object):
     }
 
     def __init__(self, settings):
+        print('auth_key:', settings.get('auth_key'))
         self.settings = settings
         self.source = settings.get('source_language', 'auto')
         self.target = settings.get('target_language', 'en')
@@ -64,6 +66,7 @@ class DeeplTranslate(object):
         self.proxy_tp = settings.get('proxy_type')
         self.proxy_ho = settings.get('proxy_host')
         self.proxy_po = settings.get('proxy_port')
+        self.auth = settings.get('auth_key')
         if self.proxy_ok == 'yes':
             if not self.proxy_tp or not self.proxy_ho or not self.proxy_po:
                 raise DeeplTranslateException(self.error_codes[504])
@@ -80,7 +83,7 @@ class DeeplTranslate(object):
             'languages': None,
         }
         self.api_urls = {
-            'translate': 'https://api.deepl.com/v2/translate?auth_key=' + settings.get("auth_key")
+            'translate': 'https://api.deepl.com/v2/translate?auth_key=' + self.auth
         }
 
     @property
@@ -116,6 +119,7 @@ class DeeplTranslate(object):
             raise DeeplTranslateException(self.error_codes[501])
         except ValueError:
             raise DeeplTranslateException(self.error_codes[503])
+        print('_get_translation_from_deepl', translation)
         return translation
 
     def build_url(self, text):
@@ -169,7 +173,7 @@ class DeeplTranslate(object):
         translations = loaded['translations']
         # detected_lang = translations[0]['detected_source_language']
         translation = translations[0]['text']
-        print('translation')
+        print('translation 1 ')
         pprint(translation)
         return translation
 

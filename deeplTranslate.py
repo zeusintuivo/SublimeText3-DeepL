@@ -15,21 +15,12 @@ import time
 import re
 import json
 
-try:
-    # Python 3 assumption
-    from .core.translate import *
-except ImportError:
-    # Python 2 assumption
+if sublime.version() < '3':
     from core.translate import *
-
-try:
-    # Python 3 assumption
-    from .libs.process_strings import *
-except ImportError:
-    # Python 2 assumption
     from libs.process_strings import *
-
-settings = sublime.load_settings("deeplTranslate.sublime-settings")
+else:
+    from .core.translate import *
+    from .libs.process_strings import *
 
 
 class DeeplTranslateCommand(sublime_plugin.TextCommand):
@@ -83,18 +74,6 @@ class DeeplTranslateCommand(sublime_plugin.TextCommand):
                 if selection:
                     largo = len(selection)
                     print('line(' + str(cur_line + 1) + ') length(' + str(largo) + ') selection(' + selection + ')')
-
-                    # if largo > 256:
-                    #    print('')
-                    #    message = 'ERR:' + str(cur_line + 1) + ' line longer than 256 chars, consider split or short.'
-                    #    print(message)
-                    #    print('')
-                    #    sublime.status_message(u'ERR:' + str(cur_line + 1) + ' line too Long (' + selection + ')')
-                    #    self.view.window().show_quick_panel(
-                    #        ["Translate", "Error", message + " \n line(" + str(cur_line + 1) + ') length(' + str(
-                    #            largo) + ') selection(' + selection + ')'], "", 1, 2)
-                    #    keep_moving = False
-                    #    return
 
                     selection = selection.encode('utf-8')
 
@@ -299,3 +278,9 @@ class DeeplTranslateShowCommand(sublime_plugin.WindowCommand):
 
 def plugin_loaded():
     global settings
+    settings = sublime.load_settings("deeplTranslate.sublime-settings")
+    sublime.log_commands(False)
+    sublime.active_window().run_command("show_panel", {"panel": "console", "toggle": True})
+    print('DeepL auth_key loaded:', settings.get('auth_key'))
+    print('DeepL Translating From:', settings.get('source_language'), ' To:', settings.get('target_language'))
+    print('DeepL Keep Moving Down the line?', settings.get('keep_moving_down'))

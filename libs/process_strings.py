@@ -19,28 +19,36 @@ import re
 import json
 import random
 
+import sqlite3
+
 
 class ProcessStrings(object):
-
-    error_codes = {
-        401: "ERR_TARGET_LANGUAGE_NOT_SPECIFIED",
-        501: "ERR_SERVICE_NOT_AVAILABLE_TRY_AGAIN_OR_USE_PROXY",
-        503: "ERR_VALUE_ERROR",
-        504: "ERR_PROXY_NOT_SPECIFIED",
-        505: "TOO_MANY_LINES",
-    }
+    unisylabus = (None, ' ', '', '"', "'", '<br/>', '</i>', '<strong>', '</strong>', '<i>', '<br>', '</br>',
+                  '>', '|', '|-', '.', ',', ';', ':')
+    target_language = ''
+    source_language = ''
 
     def __init__(self, callback=None):
+
         self.callback = callback
 
     def translate(self, text, target_language, source_language, formato='html', fake=True):
+        self.target_language = target_language
+        self.source_language = source_language
+        self.db = sqlite3.connect(self.filename) # create table if not exists
+        self.cur = self.db.execute('PRAGMA encoding = "UTF-8"')
+        self.db.commit()
+        self.cur = self.db.execute('CREATE TABLE IF NOT EXISTS keyvals (key TEXT PRIMARY KEY, value TEXT)')
+        self.db.commit()
+
         original = unquote(quote(text, ''))
+
         print('original:', original)
         # if "'" in original:
         #    original = original.replace("'", '"')
         print('orig quo:', original)
         if formato == 'plain':
-            data = self._get_translation_from_deepl(original, fake)
+            data = self._process_call_to_translate(original, fake)
             data = self.filter_tags(data)
         elif formato == 'yml':
             if len(original) > 256:
@@ -77,12 +85,12 @@ class ProcessStrings(object):
                             data = saved_key + ': ' + self.fix_variable_keep(translate_this, fake)
                         else:
                             print('a5')
-                            data = saved_key + ': ' + self._get_translation_from_deepl(translate_this, fake)
+                            data = saved_key + ': ' + self._process_call_to_translate(translate_this, fake)
                     else:
                         data = self.original_work_distribute(original, fake)
-                    data = self.fix_yml(original, data, target_language, source_language)
+                    data = self.fix_yml(original, data)
         else:
-            data = self._get_translation_from_deepl(text, fake)
+            data = self._process_call_to_translate(text, fake)
             data = self.fix_deepl(data)
         return data
 
@@ -94,6 +102,8 @@ class ProcessStrings(object):
             print('c3c', original)
             return self.fix_enters_keep(original, fake, "\n")
         elif "'" in original:
+            if original.lstrip().rstrip() in self.unisylabus:
+                return original
             print('c3a')
             if '<' in original:
                 print('c3axd')
@@ -114,19 +124,19 @@ class ProcessStrings(object):
             print('c4')
             return self.fix_variable_keep(original, fake)
         else:
-            print('c5 _get_translation_from_deepl', original)
-            return self._get_translation_from_deepl(original, fake)
+            print('c5 _process_call_to_translate', original)
+            return self._process_call_to_translate(original, fake)
 
     @staticmethod
     def starts_with_key(original):
-        print(20)
+        print('20 starts_with_key')
         original_no_spaces = original.lstrip()
         original_no_spaces_all = original_no_spaces.rstrip()
-        print(21)
+        print('21 starts_with_key')
         original_key_is = original_no_spaces.split(':')
-        print(22)
+        print('22 starts_with_key')
         key_has_spaces = original_key_is[0].split(' ')
-        print(23)
+        print('23 starts_with_key')
         second_part_exists = ""
         if len(original_key_is) > 1:
             second_part_exists = original_key_is[1].lstrip().rstrip()
@@ -155,12 +165,11 @@ class ProcessStrings(object):
         # empty second meaning, then is a like == key: or key:>  or key: |
         return second_part.lstrip().rstrip()
 
-    @staticmethod
-    def is_it_just_a_key(original):
+    def is_it_just_a_key(self, original):
         print(10)
         original_no_spaces = original.lstrip()
         original_no_spaces_all = original_no_spaces.rstrip()
-        if original_no_spaces_all in (None, '', '<br/>', '</i>', '<strong>', '</strong>', '<i>', '<br>', '</br>'):
+        if original_no_spaces_all in self.unisylabus:
             # skip empty br's
             return True
         print(11)
@@ -191,7 +200,7 @@ class ProcessStrings(object):
                     print('24')
                     sentence_data = sentence_data + self.fix_variable_keep(sentence, fake)
                 else:
-                    sentence_data = sentence_data + self._get_translation_from_deepl(sentence, fake)
+                    sentence_data = sentence_data + self._process_call_to_translate(sentence, fake)
         return sentence_data
 
     def fix_variable_keep(self, sentence, fake):
@@ -201,6 +210,7 @@ class ProcessStrings(object):
         count_split = 0
         for splitted in split_percent:
             if splitted in (None, ''):
+                print('var bx null')
                 # case 1 "%{time_ago} Dernière connexion sur le compte : il y a %{%{time_ago}%{time_ago}.".split('%{')
                 # ['', 'time_ago} Dernière connexion sur le compte : il y a ', '', 'time_ago}', 'time_ago}.']
                 # splitted = split_percent[0]  -- '' = splitted_trans = '%{'
@@ -211,9 +221,11 @@ class ProcessStrings(object):
                 # -
                 # case 2 "%{details_link}"
                 # ['', 'details_link}']
-                splitted_trans = splitted_trans + ' %{'
+                splitted_trans = splitted_trans + '%{'
             else:
+                print('var bx ', splitted)
                 if '}' in splitted:
+                    print('var }', splitted)
                     # 'time_ago} Dernière connexion sur le compte : il y a '
                     cut_other_part = splitted.split('}')
                     # ['time_ago', ' Dernière connexion sur le compte : il y a ']
@@ -222,13 +234,14 @@ class ProcessStrings(object):
                     if second_part_split in (None, ''):
                         splited_data = ''
                     else:
-                        splited_data = self._get_translation_from_deepl(second_part_split, fake)
+                        splited_data = self._process_call_to_translate(second_part_split, fake)
                     if count_split == 0:
-                        splitted_trans = splitted_trans + cut_other_part[0] + '} ' + splited_data
+                        splitted_trans = splitted_trans + cut_other_part[0] + '}' + splited_data
                     else:
-                        splitted_trans = splitted_trans + ' %{' + cut_other_part[0] + '} ' + splited_data
+                        splitted_trans = splitted_trans + '%{' + cut_other_part[0] + '}' + splited_data
                 else:
-                    splited_data = self._get_translation_from_deepl(splitted, fake)
+                    print('var } else', splitted)
+                    splited_data = self._process_call_to_translate(splitted, fake)
                     splitted_trans = splitted_trans + splited_data
                 count_split = count_split + 1
         if count_split == 0:
@@ -313,6 +326,7 @@ class ProcessStrings(object):
         count_split = 0
         for splitted in split_percent:
             if splitted in (None, ''):
+                print('html ax null')
                 # case 1 "%{time_ago} Dernière connexion sur le compte : il y a %{%{time_ago}%{time_ago}.".split('%{')
                 # ['', 'time_ago} Dernière connexion sur le compte : il y a ', '', 'time_ago}', 'time_ago}.']
                 # splitted = split_percent[0]  -- '' = splitted_trans = '%{'
@@ -323,9 +337,11 @@ class ProcessStrings(object):
                 # -
                 # case 2 "%{details_link}"
                 # ['', 'details_link}']
-                splitted_trans = splitted_trans + ' <'
+                splitted_trans = splitted_trans + '<'
             else:
+                print('html ax ', splitted)
                 if '>' in splitted:
+                    print('html >', splitted)
                     # 'time_ago} Dernière connexion sur le compte : il y a '
                     cut_other_part = splitted.split('>')
                     # ['time_ago', ' Dernière connexion sur le compte : il y a ']
@@ -335,24 +351,25 @@ class ProcessStrings(object):
                         splited_data = ''
                     else:
                         splited_data = self.fix_variable_keep(second_part_split, fake)
-                        # splited_data = self._get_translation_from_deepl(second_part_split)
+                        # splited_data = self._process_call_to_translate(second_part_split)
                     if count_split == 0:
-                        splitted_trans = splitted_trans + cut_other_part[0] + '> ' + splited_data
+                        splitted_trans = splitted_trans + cut_other_part[0] + '>' + splited_data
                     else:
-                        splitted_trans = splitted_trans + ' <' + cut_other_part[0] + '> ' + splited_data
+                        splitted_trans = splitted_trans + '<' + cut_other_part[0] + '>' + splited_data
                 else:
+                    print('html > else', splitted)
                     splited_data = self.fix_variable_keep(splitted, fake)
-                    # splited_data = self._get_translation_from_deepl(splitted)
+                    # splited_data = self._process_call_to_translate(splitted)
                     splitted_trans = splitted_trans + splited_data
                 count_split = count_split + 1
         if count_split == 0:
-            sentence_data = sentence_data + ' <' + splitted_trans
+            sentence_data = sentence_data + '<' + splitted_trans
         else:
             sentence_data = splitted_trans
         return sentence_data
 
     @staticmethod
-    def fix_yml(original, html_string, target_language, source_language):
+    def fix_yml(original, html_string):
         original_no_spaces = original.lstrip()
         original_key_is = original_no_spaces.split(':')
         key_has_spaces = original_key_is[0].split(' ')
@@ -374,6 +391,7 @@ class ProcessStrings(object):
                 sz = s.search(html_string)
         # this is a key     in yml --> last_connection_html:
         # this is not a key in yml --> Dernière connexion sur le compte :
+        print('html_string 1(' + html_string + ')')
         if ':' in original and ':' in html_string and len(original_key_is) >= 2 and len(
                 key_has_spaces) == 1:  # fix keep keys names
             print('yml key protection:' + original + ')')
@@ -386,8 +404,6 @@ class ProcessStrings(object):
             html_string = keep_source_definition + ': ' + keep_translated_text.lstrip()
             # new_largo = len(html_string)
         print('original(' + original + ')')
-        # print('source_language(' + source_language + ')')
-        # print('target_language(' + target_language + ')')
         if '{' in original and '{' in html_string and '%' in original and '%' in html_string:  # fix  % { to  %{
             html_string = html_string.replace('% {', ' %{')
         if '},' in original and '} ,' in html_string:  # fix  } , to  },
@@ -405,7 +421,7 @@ class ProcessStrings(object):
         print('html_string_missing_spaces_len(' + str(html_string_missing_spaces_len) + ')')
         if original_missing_spaces_len > html_string_missing_spaces_len:
             html_string = original_missing_spaces + html_string
-        print('html_string(' + html_string + ')')
+        print('html_string 2(' + html_string + ')')
         return html_string
 
     @staticmethod
@@ -471,23 +487,143 @@ class ProcessStrings(object):
         return html_string
 
     @staticmethod
-    def _get_translation_from_fake_deepl(text):
+    def _process_fake_to_translate(text):
+        print('task', text)
         if text == '<strong class="count-suspendable-citas">Es ist ein Termin</strong>während dieser ' \
                    'Abwesenheit vorgesehen.':
             return ' <clase fuerte=conteo-suspendible-citas> Es una cita </strong>durante esta ausencia.'
+        if text == 'Sie haben soeben ':
+            return 'Acabas de '
+        if text == ' eine Abwesenheit eingetragen.':
+            return ' una auscencia inscrito.'
+        if text == 'Wie wollen Sie fortfahren?':
+            return '¿Cómo piensa proceder?'
         if text == '          \\ Wie lautet Ihre Wahl?':
             return 'Cual es tu decision?'
         else:
             return 'translated(' + text + ')'
 
-    def _get_translation_from_deepl(self, text, fake):
-        if text.lstrip().rstrip() in (None, '', '>', '|', '|-', '"', "'", '.', ',', ';', ':'):
+    def _cached_responses(self, trimo):
+        if self.source_language == 'de' and self.target_language == 'es':
+            if trimo == '<strong class="count-suspendable-citas">Es ist ein Termin</strong>während dieser ' \
+                        'Abwesenheit vorgesehen.':
+                return [True, ' <clase fuerte=conteo-suspendible-citas> Es una cita </strong>durante esta ausencia.']
+            if trimo == 'Sie haben soeben':
+                return [True, 'Acabas de']
+            if trimo == 'eine Abwesenheit eingetragen':
+                return [True,  'una auscencia inscrito']
+            if trimo == 'Wie wollen Sie fortfahren?':
+                return [True,  '¿Cómo piensa proceder?']
+            if trimo == 'eingetragen':
+                return [True,  'está registrado']
+            if trimo == '\\ Wie lautet Ihre Wahl?':
+                return [True,   'Cual es tu decision?']
+        query = self.db.execute('SELECT key, value FROM keyvals WHERE key="' + (trimo) + '"')
+        found = query.fetchone()
+        if found:
+            cached_key = unquote(quote(found[0].decode('utf-8'), ''))
+            print('found key', cached_key)
+            if cached_key == trimo:
+                cached_content = unquote(quote(found[1], ''))
+                print('found content', cached_content)
+                return [True, cached_content]
+        return [False, trimo]
+
+    @staticmethod
+    def side_trims(text):
+        largo = len(text)
+        left_diff = largo - len(text.lstrip())
+        lefty = ""
+        if left_diff > 0:
+            lefty = text[:left_diff]
+        righty_aus = text.rstrip()
+        right_diff = (largo - len(righty_aus)) * -1
+        righty = ""
+        if right_diff < 0:
+            righty = text[right_diff:]
+        trimo = righty_aus.lstrip()
+        print('trans ("' + text + '")')
+        print('trimo ("' + lefty + '")' + str(left_diff) + '("' + trimo + '")' + str(right_diff) + '("' + righty + '")')
+
+        return [lefty, righty, trimo]
+    '''
+    Python has many variations off of the main three modes, these three modes are:
+    
+    'w'   write text
+    'r'   read text
+    'a'   append text
+    
+    So to append to a file it's as easy as:
+    
+    f = open('filename.txt', 'a') 
+    f.write('whatever you want to write here (in append mode) here.')
+    
+    Then there are the modes that just make your code fewer lines:
+    
+    'r+'  read + write text
+    'w+'  read + write text
+    'a+'  append + read text
+    
+    Finally, there are the modes of reading/writing in binary format:
+    
+    'rb'  read binary
+    'wb'  write binary
+    'ab'  append binary
+    'rb+' read + write binary
+    'wb+' read + write binary
+    'ab+' append + read binary
+    ' ''
+        # with open(filename, "w") as f:
+        #    for key in dict:
+        #        print >> f, trimo
+        # with open(self.filename(), 'w') as f:
+        #    json.dump(trimo, translation)
+        
+        REF: https://www.quora.com/How-do-I-write-a-dictionary-to-a-file-in-Python
+    '''
+    def cache_translation(self, trimo, translation):
+        self.cur.execute('INSERT OR IGNORE INTO keyvals VALUES ("' + trimo + '", "' + translation + '")')
+        # cur.rowcount can be used to confirm the number of inserted items
+        self.db.commit()
+
+    @property
+    def filename(self):
+        return str(self.source_language) + '-' + str(self.target_language) + '.dic'
+
+    def split_content(self, text, fake, splitter):
+        comaded = ''
+        count = 0
+        for splitted in text.split(splitter):
+            if count == 0:
+                comaded = self.original_work_distribute(splitted, fake)
+            else:
+                comaded = comaded + splitter + self.original_work_distribute(splitted, fake)
+            count = count + 1
+        print(' ' + splitter + 'ed ("' + comaded + '")')
+        return comaded
+
+    def _process_call_to_translate(self, text, fake):
+        if text == ' ':
+            print('  uni ("' + text + '")')
             return text
-        if fake:
-            return self._get_translation_from_fake_deepl(text.rstrip())
-        loaded = self.callback(text.rstrip())
-        translation = self._get_translation_from_json(loaded)
-        return translation
+        for splitter in [',', ';', '.', '|']:
+            if splitter in text:
+                return self.split_content(text, fake, splitter)
+        [lefty, righty, trimo] = self.side_trims(text)
+        if trimo in self.unisylabus:
+            print('  uni ("' + text + '")')
+            return text
+        [was_cached, translation] = self._cached_responses(trimo)
+        if not was_cached:
+            if fake:
+                translation = self._process_fake_to_translate(trimo)
+            else:
+                translation = self.callback(trimo)
+        self.cache_translation(trimo, translation)
+        retrimmed = lefty + translation + righty
+        print('  got ("' + translation + '")')
+        print('retrim("' + retrimmed + '")')
+        return retrimmed
 
     def is_json(myjson):
         try:
@@ -497,15 +633,5 @@ class ProcessStrings(object):
         return True
 
     @staticmethod
-    def _get_translation_from_json(loaded):
-        translations = loaded['translations']
-        # deteced_lang = translations[0]['detected_source_language']
-        translation = translations[0]['text']
-        print('translation')
-        pprint(translation)
-        return translation
-
-    @staticmethod
     def _unescape(text):
         return loads('"%s"' % text)
-
