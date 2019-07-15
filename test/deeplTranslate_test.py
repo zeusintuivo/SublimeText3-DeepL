@@ -52,7 +52,8 @@ class TestDeeplTranslate(unittest.TestCase):
              12: '        title: Centroderentas “responds to a specific need of society, it is practical and '
                  'user-friendly, has an enormous amount of growth potential"',
              13: 'Centroderentas bietet einen einfach zu benutzenden Kalender, der von mobilen Geräten aus zugänglich '
-                 'und den Bedürfnissen der 25 Ärzte der Renticenter angepasst ist.'
+                 'und den Bedürfnissen der 25 Ärzte der Renticenter angepasst ist.',
+             14: 'Les Cookies dits « Techniques » (listés ci-après) ayant pour'
              }
     settings = Settings()
     print('settings:', settings.settings)
@@ -126,6 +127,10 @@ class TestDeeplTranslate(unittest.TestCase):
         self.assertEqual(self.process_strings.translate(self.tests[12], 'es', 'de', 'yml', False),
                          '        title: Centroderentas "responde a una necesidad específica de la sociedad, es '
                          'práctico y fácil de usar, tiene un enorme potencial de crecimiento"')
+
+    def test_little_brackets(self):
+        self.assertEqual(self.process_strings.translate(self.tests[14], 'es', 'fr', 'yml', False),
+                         'Las denominadas Cookies « Técnicas » (que se enumeran a continuación) cuya finalidad es')
 
 
 if __name__ == '__main__':

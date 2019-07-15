@@ -40,7 +40,8 @@ import sqlite3
 
 class ProcessStrings(object):
     unisylabus = (None, ' ', '', '"', "'", '<br/>', '</i>', '<strong>', '</strong>', '<i>', '<br>', '</br>',
-                  '>', '|', '|-', '.', ',', ';', ':')
+                  '>', '|', '|-', '.', ',', ';', ':', ',', '•', '+', '!', '¡', '?', '¿', '(', ')', '[', ']',
+                  '{', '}', '+', '(#', '#', '/', '\\', '~\\', '^\\')
     target_language = ''
     source_language = ''
     saved = ''
@@ -97,20 +98,32 @@ class ProcessStrings(object):
                         translate_this = self.obtain_second_part(original)
                         if "\\n" in translate_this:
                             print('a3c')
-                            data = saved_key + ': ' + self.fix_enters_keep(translate_this, fake, "\\n")
+                            if original == "\\n":
+                                data = saved_key + ': ' + "\\n"
+                            else:
+                                data = saved_key + ': ' + self.fix_enters_keep(translate_this, fake, "\\n")
                         elif "\n" in translate_this:
-                            print('a3c')
-                            data = saved_key + ': ' + self.fix_enters_keep(translate_this, fake, "\n")
+                            print('a3cx2')
+                            if original == "\n":
+                                data = saved_key + ': ' + "\n"
+                            else:
+                                data = saved_key + ': ' + self.fix_enters_keep(translate_this, fake, "\n")
                         elif "'" in translate_this:
                             print('a3a')
-                            data = saved_key + ': ' + self.fix_singlequote_keep(translate_this, fake)
+                            if original == "'":
+                                data = saved_key + ': ' + "'"
+                            else:
+                                data = saved_key + ': ' + self.fix_singlequote_keep(translate_this, fake)
                         elif '"' in translate_this:
                             print('a3b')
-                            data = saved_key + ': ' + self.fix_doublequote_keep(translate_this, fake)
-                        elif '<' in translate_this:
+                            if original == '"':
+                                data = saved_key + ': ' + '"'
+                            else:
+                                data = saved_key + ': ' + self.fix_doublequote_keep(translate_this, fake)
+                        elif '<' in translate_this and '>' in translate_this:
                             print('a3d')
                             data = saved_key + ': ' + self.fix_html_keep(translate_this, fake)
-                        elif '%{' in original:
+                        elif '%{' in translate_this and '}' in translate_this:
                             print('a4')
                             data = saved_key + ': ' + self.fix_variable_keep(translate_this, fake)
                         else:
@@ -129,12 +142,18 @@ class ProcessStrings(object):
 
     def original_work_distribute(self, original, fake):
         if "\\n" in original:
+            if original == "\\n":
+                return "\\n"
             print('c3c', original)
             return self.fix_enters_keep(original, fake, "\\n")
         elif "\n" in original:
-            print('c3c', original)
+            if original == "\n":
+                return "\n"
+            print('c3cx2', original)
             return self.fix_enters_keep(original, fake, "\n")
         elif "'" in original:
+            if original == "'":
+                return "'"
             if original.lstrip().rstrip() in self.unisylabus:
                 return original
             print('c3a')
@@ -144,16 +163,18 @@ class ProcessStrings(object):
             else:
                 return self.fix_singlequote_keep(original, fake)
         elif '"' in original:
-            print('c3b')
+            print('c3b (' + original + ')')
+            if original == '"':
+                return '"'
             if '<' in original:
                 print('c3bxd')
                 return self.fix_html_keep(original, fake)
             else:
                 return self.fix_doublequote_keep(original, fake)
-        elif '<' in original:
+        elif '<' in original and '>' in original:
             print('c3d')
             return self.fix_html_keep(original, fake)
-        elif '%{' in original:
+        elif '%{' in original and '}' in original:
             print('c4')
             return self.fix_variable_keep(original, fake)
         else:
@@ -339,7 +360,7 @@ class ProcessStrings(object):
             else:
                 print("work distribute", splitted)
                 splited_data = self.original_work_distribute(splitted, fake)
-                print("work translated", splited_data)
+                print("work translated:(" + splited_data + ')')
 
                 print("count_split", count_split)
                 if count_split < len(split_percent):
@@ -348,10 +369,13 @@ class ProcessStrings(object):
                     print("work translated", splited_data)
                 splitted_trans = splitted_trans + splited_data
 
-        print("split_percent", split_percent)
+        print("splitted_trans:", splitted_trans)
+        print("split_percent count:", count_split, split_percent)
         if count_split == 0:
+            print("split_percent add ++ ", tipo , splitted_trans)
             sentence_data = sentence_data + tipo + splitted_trans
         else:
+            print("split_percent single ", splitted_trans)
             sentence_data = splitted_trans
         print("sentence_data", sentence_data)
         return sentence_data
@@ -401,6 +425,47 @@ class ProcessStrings(object):
                 count_split = count_split + 1
         if count_split == 0:
             sentence_data = sentence_data + '<' + splitted_trans
+        else:
+            sentence_data = splitted_trans
+        return sentence_data
+
+    def wrapper_keep(self, sentence, start, end, fake ):
+        sentence_data = ""
+        split_percent = sentence.split(start) # ' < '
+        splitted_trans = ""
+        count_split = 0
+        for splitted in split_percent:
+            if splitted in (None, ''):
+                print('wrapper a z null')
+                splitted_trans = splitted_trans + start # ' < '
+            else:
+                print('wrapper b z ', start, splitted)
+                if end in splitted:                    # ' > '
+                    print('wrapper end', end,  splitted)
+                    cut_other_part = splitted.split(end)  # ' > '
+                    first_part = cut_other_part[0]
+                    print('wrapper first_part', start, first_part)
+                    if first_part in (None, ''):
+                        splited_data_trans = ''
+                    else:
+                        splited_data_trans = self._process_call_to_translate(first_part, fake)
+                    second_part_split = cut_other_part[1]
+                    if second_part_split in (None, ''):
+                        splited_data = ''
+                    else:
+                        print('wrapper second part', end, second_part_split)
+                        splited_data = self._process_call_to_translate(second_part_split, fake)
+                    if count_split == 0:
+                        splitted_trans = splitted_trans + splited_data_trans + end + splited_data  # ' > '
+                    else:
+                        splitted_trans = splitted_trans + start + splited_data_trans + end + splited_data # ' < '+' > '
+                else:
+                    print('wrapper  else', splitted)
+                    splited_data = self._process_call_to_translate(splitted, fake)
+                    splitted_trans = splitted_trans + splited_data
+                count_split = count_split + 1
+        if count_split == 0:
+            sentence_data = sentence_data + start + splitted_trans  # ' < '
         else:
             sentence_data = splitted_trans
         return sentence_data
@@ -712,9 +777,16 @@ class ProcessStrings(object):
         if text == ' ':
             print('  uni ("' + text + '")')
             return text
-        for splitter in [',', ';', '.', '|']:
+        for splitter in [',', ';', '.', '|', '•', '+']:
             if splitter in text:
                 return self.split_content(text, fake, splitter)
+        for wrapper in [('«', '»'), ('(', ')'), ('<', '>'), ('[', ']'), ('{', '}')]:
+            if wrapper[0] in text and wrapper[1] not in text:
+                return self.split_content(text, fake, wrapper[0])
+            if wrapper[1] in text and wrapper[0] not in text:
+                return self.split_content(text, fake, wrapper[1])
+            if wrapper[0] in text and wrapper[1] in text:
+                return self.wrapper_keep(text, wrapper[0], wrapper[1], fake)
         [lefty, righty, trimo] = self.side_trims(text)
         if trimo in self.unisylabus:
             print('  uni ("' + text + '")')
