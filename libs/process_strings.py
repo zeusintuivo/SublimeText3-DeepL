@@ -679,6 +679,7 @@ class ProcessStrings(object):
                 # decoded_value = self.decode_charset(found[1])
                 cached_content = unquote(quote(found[1], ''))
                 print('cache found content:(' + cached_content + ')')
+                cached_content = self.remove_damaged_quotes(trimo, cached_content)
                 return [True, cached_content]
         print('not found cache?', found)
         return [False, trimo]
