@@ -7,12 +7,13 @@ __version__ = "1.0.0"
 import platform
 import os
 import sys
+
 # REF "how to absolute import from root" https://chrisyeh96.github.io/2017/08/08/definitive-guide-python-imports.html
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-python_version=platform.python_version()
-path_cwd=os.getcwd()
-print ('Python version:', python_version)
-print ('Path version:', path_cwd)
+python_version = platform.python_version()
+path_cwd = os.getcwd()
+print('Python version:', python_version)
+print('Path version:', path_cwd)
 
 # expectation  '3.7.3' < '3' or '2.7.11' < '3'
 if python_version < '3':
@@ -53,7 +54,11 @@ class TestDeeplTranslate(unittest.TestCase):
                  'user-friendly, has an enormous amount of growth potential"',
              13: 'Centroderentas bietet einen einfach zu benutzenden Kalender, der von mobilen Geräten aus zugänglich '
                  'und den Bedürfnissen der 25 Ärzte der Renticenter angepasst ist.',
-             14: 'Les Cookies dits « Techniques » (listés ci-après) ayant pour'
+             14: 'Les Cookies dits « Techniques » (listés ci-après) ayant pour',
+             15: "      # html: '<abbr title=\"required\">*</abbr>'",
+             16: '      # html: "<abbr title=\'required\'>*</abbr>"',
+             17: "      # html: '",
+             18: '      # html: "'
              }
     settings = Settings()
     print('settings:', settings.settings)
@@ -62,11 +67,11 @@ class TestDeeplTranslate(unittest.TestCase):
 
     def test_enters(self):
         self.assertEqual(self.process_strings.translate(self.tests[1], 'es', 'de', 'yml', True),
-                         '          Cual es tu decision?\n\n "')
+                         '          Cual es tu decision?\n\n"')
 
     def test_enters_double(self):
         self.assertEqual(self.process_strings.translate(self.tests[2], 'es', 'de', 'yml', False),
-                         '          Cual es tu decision?\\n\\n "')
+                         '          Cual es tu decision?\\n\\n"')
 
     def test_tag_quote(self):
         self.assertEqual(self.process_strings.translate(self.tests[3], 'es', 'de', 'yml', False),
@@ -75,8 +80,8 @@ class TestDeeplTranslate(unittest.TestCase):
     def test_key_quote_tag(self):
         self.maxDiff = 1000
         self.assertEqual(self.process_strings.translate(self.tests[4], 'es', 'de', 'yml', False),
-                         "              warning_html: 'Acabas de %{date} %{recurring} ha registrado una ausencia."
-                         "<br/> %{count_rdv}<br/> <span class=\"question\">¿Cómo piensa proceder?</span>'")
+                         "              warning_html: 'Usted acaba de ver %{date} %{recurring} ha registrado "
+                         "una ausencia.<br/> %{count_rdv}<br/> <span class=\"question\">¿Cómo piensa proceder?</span>'")
 
     def test_one_single_quote(self):
         self.assertEqual(self.process_strings.translate(self.tests[5], 'es', 'de', 'yml', False),
@@ -87,8 +92,8 @@ class TestDeeplTranslate(unittest.TestCase):
 
     def test_key_tag_var(self):
         self.assertEqual(self.process_strings.translate(self.tests[6], 'es', 'de', 'yml', False),
-                         '  warning_html: \'Acabas de %{date} %{recurring} una auscencia inscrito.<br/> %{count_rdv}'
-                         '<br/> <span class="question">¿Cómo piensa proceder?</span>')
+                         '  warning_html: \'Usted acaba de ver %{date} %{recurring} una auscencia inscrito.<br/> '
+                         '%{count_rdv}<br/> <span class="question">¿Cómo piensa proceder?</span>')
 
     def test_one_line_complex(self):
         self.assertEqual(self.process_strings.translate(self.tests[7], 'es', 'de', 'yml', False),
@@ -97,8 +102,8 @@ class TestDeeplTranslate(unittest.TestCase):
 
     def test_one_line_complex_2(self):
         self.assertEqual(self.process_strings.translate(self.tests[8], 'es', 'de', 'yml', False),
-                         "  warning_html: 'Acabas de %{date} %{recurring} una auscencia inscrito.<br/> %{count_rdv}"
-                         "<br/> <span class=\"question\">¿Cómo piensa proceder?</span>")
+                         "  warning_html: 'Usted acaba de ver %{date} %{recurring} una auscencia inscrito.<br/> "
+                         "%{count_rdv}<br/> <span class=\"question\">¿Cómo piensa proceder?</span>")
 
     def test_one_line_now_what(self):
         self.assertEqual(self.process_strings.translate(self.tests[9], 'es', 'de', 'yml', False),
@@ -132,13 +137,32 @@ class TestDeeplTranslate(unittest.TestCase):
         self.assertEqual(self.process_strings.translate(self.tests[14], 'es', 'fr', 'yml', False),
                          'Las denominadas Cookies « Técnicas » (que se enumeran a continuación) cuya finalidad es')
 
+    def test_mix_match_single_quotes(self):
+        self.assertEqual(self.process_strings.translate(self.tests[15], 'es', 'fr', 'yml', False),
+                         self.tests[15])
+
+    def test_mix_match_double_quotes(self):
+        self.assertEqual(self.process_strings.translate(self.tests[16], 'es', 'fr', 'yml', False),
+                         self.tests[16])
+
+    def test_trail_single_quotes(self):
+        self.assertEqual(self.process_strings.translate(self.tests[17], 'es', 'fr', 'yml', False),
+                         self.tests[17])
+
+    def test_trail_double_quotes(self):
+        self.assertEqual(self.process_strings.translate(self.tests[18], 'es', 'fr', 'yml', False),
+                         self.tests[18])
+
 
 if __name__ == '__main__':
     unittest.main()
 
-#
-# How to test:
-#
-# nodemon --watch deeplTranslate_test.py --watch libs/process_strings.py --watch core/translate.py --exec python deeplTranslate_test.py
-#
-#
+'''
+
+How to test:
+
+nodemon --watch deeplTranslate_test.py --watch libs/process_strings.py --watch core/translate.py
+--exec python deeplTranslate_test.py
+
+'''
+

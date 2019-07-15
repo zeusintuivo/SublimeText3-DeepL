@@ -4,6 +4,10 @@
     "command": "deepl_translate"
   },
   {
+    "caption":"DeepL Translate flat - selected text",
+    "command": "deepl_translate_flatten"
+  },
+  {
     "caption":"DeepL Translate selected to...",
     "command": "deepl_translate_to"
   },

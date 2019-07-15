@@ -30,80 +30,100 @@ class TestProcessStrings(unittest.TestCase):
              12: '        title: Centroderentas “responds to a specific need of society, it is practical and '
                  'user-friendly, has an enormous amount of growth potential"',
              13: '          müssen Sie alle kommenden Termine in Ihrem Konto stornieren.\n"',
-             14: 'Vous vous exposez, ce faisant, à une forte dégradation de l’expérience utilisateur'
+             14: 'Vous vous exposez, ce faisant, à une forte dégradation de l’expérience utilisateur',
+             15: "   key_something_here: ''",
+             16: '   key_something_here: ""',
+             17: "      # html: '<abbr title=\"required\">*</abbr>'"
              }
 
     process_strings = ProcessStrings()
 
-    # def test_enters(self):
-    #     self.assertEqual(self.process_strings.translate(self.tests[1], 'es', 'de', 'yml', True),
-    #                      '          Cual es tu decision?\n\n "')
-    #
-    # def test_enters_double(self):
-    #     self.assertEqual(self.process_strings.translate(self.tests[2], 'es', 'de', 'yml', True),
-    #                      '          Cual es tu decision?\\n\\n "')
-    #
-    # def test_tag_quote(self):
-    #     self.assertEqual(self.process_strings.translate(self.tests[3], 'es', 'de', 'yml', True),
-    #                      ' <strong class="do-not-translate-this"> translated(Es ist ein Termin) </strong> '
-    #                      'translated(w\xc3\xa4hrend dieser Abwesenheit vorgesehen.)')
-    #
-    # def test_key_quote_tag(self):
-    #     self.assertEqual(self.process_strings.translate(self.tests[4], 'es', 'de', 'yml', True),
-    #                      '              warning_html: \'translated(Sie haben soeben) %{date}   %{recurring}'
-    #                      ' translated( eine Abwesenheit                eingetragen.) <br/>   %{count_rdv}  '
-    #                      '<br/>   <span class="question"> translated(Wie wollen                '
-    #                      'Sie fortfahren?) </span> \'')
-    #
-    # def test_one_single_quote(self):
-    #     self.assertEqual(self.process_strings.translate(self.tests[5], 'es', 'de', 'yml', True),
-    #                      "'")
-    #
-    # def test_one_double_quote(self):
-    #     self.assertEqual(self.process_strings.translate('"', 'es', 'de', 'yml', True), '"')
-    #
-    # def test_key_tag_var(self):
-    #     self.assertEqual(self.process_strings.translate(self.tests[6], 'es', 'de', 'yml', True),
-    #                      '  warning_html: \'Acabas de %{date} %{recurring} una auscencia inscrito.<br/> %{count_rdv}'
-    #                      '<br/> <span class="question">\xc2\xbfC\xc3\xb3mo piensa proceder?</span>')
-    #
-    # def test_one_line_complex(self):
-    #     self.assertEqual(self.process_strings.translate(self.tests[7], 'es', 'de', 'yml', True),
-    #                      '                est\xc3\xa1 registrado.<br/> %{count_rdv}<br/> <span class="question">'
-    #                      '\xc2\xbfC\xc3\xb3mo piensa proceder?</span>')
-    #
-    # def test_one_line_complex_2(self):
-    #     self.assertEqual(self.process_strings.translate(self.tests[8], 'es', 'de', 'yml', True),
-    #                      '  warning_html: \'Acabas de %{date} %{recurring} una auscencia inscrito.<br/> '
-    #                      '%{count_rdv}<br/> <span class="question">\xc2\xbfC\xc3\xb3mo piensa proceder?</span>')
-    #
-    # def test_one_line_now_what(self):
-    #     self.assertEqual(self.process_strings.translate(self.tests[9], 'es', 'de', 'yml', True),
-    #                      '                    on_same_day: Acabas de llegar al %{date} antes de %{start_time} '
-    #                      'para cuando')
-    #
-    # def test_sqlite_response(self):
-    #     self.assertEqual(self.process_strings.translate(self.tests[10], 'es', 'de', 'yml', True),
-    #                      'Acabas de llegar al')
-    #
-    # def test_sqlite_stranger_char(self):
-    #     self.assertEqual(self.process_strings.translate(self.tests[11], 'es', 'de', 'yml', True),
-    #                      '        title: translated(Centroderentas \xe2\x80\x9cresponds to a specific need of '
-    #                      'society), translated(it is practical and)')
-    #
-    # def test_sqlite_stranger_char(self):
-    #     self.assertEqual(self.process_strings.translate(self.tests[12], 'es', 'de', 'yml', True),
-    #                      '        title: translated(Centroderentas \xe2\x80\x9cresponds to a specific need of '
-    #                      'society), translated(it is practical and user-friendly), translated(has an enormous '
-    #                      'amount of growth potential)"')
-    #
-    # def test_cuote_at_the_end(self):
-    #     self.assertEqual(self.process_strings.translate(self.tests[13], 'es', 'de', 'yml', True),
-    #                      '          usted debe cancelar todas las próximas citas en su cuenta.\n"')
+    def test_enters(self):
+        self.assertEqual(self.process_strings.translate(self.tests[1], 'es', 'de', 'yml', True),
+                         '          Cual es tu decision?\n\n"')
+
+    def test_enters_double(self):
+        self.assertEqual(self.process_strings.translate(self.tests[2], 'es', 'de', 'yml', True),
+                         '          Cual es tu decision?\\n\\n"')
+
+    def test_tag_quote(self):
+        self.assertEqual(self.process_strings.translate(self.tests[3], 'es', 'de', 'yml', True),
+                         '<strong class="do-not-translate-this">Es una cita</strong>durante esta ausencia.')
+
+    def test_key_quote_tag(self):
+        self.assertEqual(self.process_strings.translate(self.tests[4], 'es', 'de', 'yml', True),
+                         '              warning_html: \'Usted acaba de ver %{date} %{recurring} ha registrado una '
+                         'ausencia.<br/> %{count_rdv}<br/> <span class="question">¿Cómo piensa proceder?</span>\'')
+
+    def test_one_single_quote(self):
+        self.assertEqual(self.process_strings.translate(self.tests[5], 'es', 'de', 'yml', True),
+                         "'")
+
+    def test_one_double_quote(self):
+        self.assertEqual(self.process_strings.translate('"', 'es', 'de', 'yml', True), '"')
+
+    def test_key_tag_var(self):
+        self.assertEqual(self.process_strings.translate(self.tests[6], 'es', 'de', 'yml', True),
+                         '  warning_html: \'Usted acaba de ver %{date} %{recurring} una auscencia inscrito.<br/> %{count_rdv}'
+                         '<br/> <span class="question">¿Cómo piensa proceder?</span>')
+
+    def test_one_line_complex(self):
+        self.assertEqual(self.process_strings.translate(self.tests[7], 'es', 'de', 'yml', True),
+                         '                está registrado.<br/> %{count_rdv}<br/> <span class="question">'
+                         '¿Cómo piensa proceder?</span>')
+
+    def test_one_line_complex_2(self):
+        self.assertEqual(self.process_strings.translate(self.tests[8], 'es', 'de', 'yml', True),
+                         '  warning_html: \'Usted acaba de ver %{date} %{recurring} una auscencia inscrito.<br/> '
+                         '%{count_rdv}<br/> <span class="question">¿Cómo piensa proceder?</span>')
+
+    def test_one_line_now_what(self):
+        self.assertEqual(self.process_strings.translate(self.tests[9], 'es', 'de', 'yml', True),
+                         '                    on_same_day: Acabas de llegar al %{date} antes de %{start_time} '
+                         'para cuando')
+
+    def test_sqlite_response(self):
+        self.assertEqual(self.process_strings.translate(self.tests[10], 'es', 'de', 'yml', True),
+                         'Acabas de llegar al')
+
+    def test_sqlite_stranger_char(self):
+        self.assertEqual(self.process_strings.translate(self.tests[11], 'es', 'de', 'yml', True),
+                         '        title: translated(Centroderentas \xe2\x80\x9cresponds to a specific need of '
+                         'society), translated(it is practical and)')
+
+    def test_sqlite_stranger_char(self):
+        self.assertEqual(self.process_strings.translate(self.tests[12], 'es', 'de', 'yml', True),
+                         '        title: Centroderentas "responde a una necesidad específica de la sociedad, '
+                         'es práctico y fácil de usar, tiene un enorme potencial de crecimiento"')
+
+    def test_cuote_at_the_end(self):
+        self.assertEqual(self.process_strings.translate(self.tests[13], 'es', 'de', 'yml', True),
+                         '          usted debe cancelar todas las próximas citas en su cuenta.\n"')
 
     def test_comma_separation(self):
         self.assertEqual(self.process_strings.translate(self.tests[14], 'es', 'fr', 'yml', True),
-                         'Usted se está exponiendo a, de este modo, un deterioro significativo de la experiencia del usuario')
+                         'Usted se está exponiendo a, de este modo, un deterioro significativo de la '
+                         'experiencia del usuario')
+
+    def test_alone_single_quotes(self):
+        self.assertEqual(self.process_strings.translate(self.tests[15], 'es', 'fr', 'yml', True),
+                         self.tests[15])
+
+    def test_alone_single_double_quotes(self):
+        self.assertEqual(self.process_strings.translate(self.tests[16], 'es', 'fr', 'yml', True),
+                         self.tests[16])
+
+    def test_alone_single_double_quotes(self):
+        self.assertEqual(self.process_strings.translate(self.tests[17], 'es', 'fr', 'yml', True),
+                         self.tests[17])
+
+    def test_trail_single_quotes(self):
+        self.assertEqual(self.process_strings.translate("# html: '", 'es', 'fr', 'yml', True),
+                         "# html: '")
+
+    def test_trail_double_quotes(self):
+        self.assertEqual(self.process_strings.translate('# html: "', 'es', 'fr', 'yml', True),
+                         '# html: "')
 
 
 if __name__ == '__main__':

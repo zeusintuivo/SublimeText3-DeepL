@@ -4,8 +4,6 @@
 
 __version__ = "1.0.0"
 
-
-
 try:
     # Python 3 assumption
     import urllib
@@ -73,7 +71,7 @@ class ProcessStrings(object):
         # print('original [](' + original[1:-1] + ')')
         # original = unquote(quote(origina, ''))
 
-        # print('original:', original)
+        print('original:', original)
         # if "'" in original:
         #    original = original.replace("'", '"')
         # print('orig quo:', original)
@@ -95,36 +93,9 @@ class ProcessStrings(object):
                     if self.starts_with_key(original):
                         saved_key = self.obtain_key(original)
                         translate_this = self.obtain_second_part(original)
-                        if "\\n" in translate_this:
-                            # print('a3c')
-                            if original == "\\n":
-                                data = saved_key + ': ' + "\\n"
-                            else:
-                                data = saved_key + ': ' + self.fix_enters_keep(translate_this, fake, "\\n")
-                        elif "\n" in translate_this:
-                            # print('a3cx2')
-                            if original == "\n":
-                                data = saved_key + ': ' + "\n"
-                            else:
-                                data = saved_key + ': ' + self.fix_enters_keep(translate_this, fake, "\n")
-                        elif "'" in translate_this:
-                            # print('a3a')
-                            if original == "'":
-                                data = saved_key + ': ' + "'"
-                            else:
-                                data = saved_key + ': ' + self.fix_singlequote_keep(translate_this, fake)
-                        elif '"' in translate_this:
-                            # print('a3b')
-                            if original == '"':
-                                data = saved_key + ': ' + '"'
-                            else:
-                                data = saved_key + ': ' + self.fix_doublequote_keep(translate_this, fake)
-                        elif '<' in translate_this and '>' in translate_this:
-                            # print('a3d')
-                            data = saved_key + ': ' + self.fix_html_keep(translate_this, fake)
-                        elif '%{' in translate_this and '}' in translate_this:
-                            # print('a4')
-                            data = saved_key + ': ' + self.fix_variable_keep(translate_this, fake)
+                        [cached_true, translated_data] = self._processor(translate_this, fake)
+                        if cached_true:
+                            data = saved_key + ': ' + translated_data
                         else:
                             # print('a5')
                             data = saved_key + ': ' + self._process_call_to_translate(translate_this, fake)
@@ -139,43 +110,50 @@ class ProcessStrings(object):
         self.db.close()
         return data
 
-    def original_work_distribute(self, original, fake):
+    def _processor(self, original, fake):
+        striped = original.strip()
         if "\\n" in original:
             if original == "\\n":
                 return "\\n"
             # print('c3c', original)
-            return self.fix_enters_keep(original, fake, "\\n")
+            return [True, self.fix_enters_keep(original, fake, "\\n")]
         elif "\n" in original:
             if original == "\n":
-                return "\n"
+                return [True, "\n"]
             # print('c3cx2', original)
-            return self.fix_enters_keep(original, fake, "\n")
+            return [True, self.fix_enters_keep(original, fake, "\n")]
         elif "'" in original:
-            if original == "'":
-                return "'"
+            if striped in ("'", "''", "'''", "''''"):
+                return [True, striped]
             if original.lstrip().rstrip() in self.unisylabus:
-                return original
+                return [True, original]
             # print('c3a')
             if '<' in original:
                 # print('c3axd')
-                return self.fix_html_keep(original, fake)
+                return [True, self.fix_html_keep(original, fake)]
             else:
-                return self.fix_singlequote_keep(original, fake)
+                return [True, self.fix_singlequote_keep(original, fake)]
         elif '"' in original:
             # print('c3b (' + original + ')')
-            if original == '"':
-                return '"'
+            if striped in ('"', '""', '"""', '""""'):
+                return [True, striped]
             if '<' in original:
                 # print('c3bxd')
-                return self.fix_html_keep(original, fake)
+                return [True, self.fix_html_keep(original, fake)]
             else:
-                return self.fix_doublequote_keep(original, fake)
+                return [True, self.fix_doublequote_keep(original, fake)]
         elif '<' in original and '>' in original:
             # print('c3d')
-            return self.fix_html_keep(original, fake)
+            return [True, self.fix_html_keep(original, fake)]
         elif '%{' in original and '}' in original:
             # print('c4')
-            return self.fix_variable_keep(original, fake)
+            return [True, self.fix_variable_keep(original, fake)]
+        return [False, original]
+
+    def original_work_distribute(self, original, fake):
+        [cached_true, distributed] = self._processor(original, fake)
+        if cached_true:
+            return distributed
         else:
             # print('c5 _process_call_to_translate', original)
             distributed = self._process_call_to_translate(original, fake)
@@ -428,18 +406,18 @@ class ProcessStrings(object):
             sentence_data = splitted_trans
         return sentence_data
 
-    def wrapper_keep(self, sentence, start, end, fake ):
+    def wrapper_keep(self, sentence, start, end, fake):
         sentence_data = ""
-        split_percent = sentence.split(start) # ' < '
+        split_percent = sentence.split(start)  # ' < '
         splitted_trans = ""
         count_split = 0
         for splitted in split_percent:
             if splitted in (None, ''):
                 # print('wrapper a z null')
-                splitted_trans = splitted_trans + start # ' < '
+                splitted_trans = splitted_trans + start  # ' < '
             else:
                 # print('wrapper b z ', start, splitted)
-                if end in splitted:                    # ' > '
+                if end in splitted:  # ' > '
                     # print('wrapper end', end,  splitted)
                     cut_other_part = splitted.split(end)  # ' > '
                     first_part = cut_other_part[0]
@@ -457,7 +435,7 @@ class ProcessStrings(object):
                     if count_split == 0:
                         splitted_trans = splitted_trans + splited_data_trans + end + splited_data  # ' > '
                     else:
-                        splitted_trans = splitted_trans + start + splited_data_trans + end + splited_data # ' < '+' > '
+                        splitted_trans = splitted_trans + start + splited_data_trans + end + splited_data  # ' < '+' > '
                 else:
                     # print('wrapper  else', splitted)
                     splited_data = self._process_call_to_translate(splitted, fake)
@@ -470,12 +448,32 @@ class ProcessStrings(object):
         return sentence_data
 
     @staticmethod
-    def remove_damaged_quotes(original, text):
-        if original[0] != "'" and original[-1] != "'" and text[0] == "'" and text[-1] == "'":
-            return text[1:-1]
-        if original[0] != '"' and original[-1] != '"' and text[0] == '"' and text[-1] == '"':
-            return text[1:-1]
-        return text
+    def remove_damaged_quotes(original, translated):
+        print('remove_damaged_quotes       :' + translated)
+        len_original = len(original)
+        len_translated = len(translated)
+        new_fixed = translated
+        if len_original > 0 and len_translated > 0:
+            if original[0] != "'" and original[-1] != "'" and translated[0] == "'" and translated[-1] == "'":
+                new_fixed = translated[1:-1]
+            if original[0] != "'" and original[-1] == "'" and translated[0] != "'" and translated[-1] != "'":
+                new_fixed = translated + "'"
+            if original[0] == "'" and original[-1] != "'" and translated[0] != "'" and translated[-1] != "'":
+                new_fixed = "'" + translated
+
+            if original[0] != '"' and original[-1] != '"' and translated[0] == '"' and translated[-1] == '"':
+                new_fixed = translated[1:-1]
+            if original[0] != '"' and original[-1] == '"' and translated[0] != '"' and translated[-1] != '"':
+                new_fixed = translated + '"'
+            if original[0] == '"' and original[-1] != '"' and translated[0] != '"' and translated[-1] != '"':
+                new_fixed = '"' + translated
+        if len_original > 2 and len_translated > 2:
+            if original[0] != '"' and original[-2:] == ' "' and translated[0] != '"' and translated[-2:] == '""':
+                new_fixed = translated[0:-2] + ' "'
+            if original[0] != "'" and original[-2:] == " '" and translated[0] != "'" and translated[-2:] == "''":
+                new_fixed = translated[0:-2] + "'"
+        print('remove_damaged_quotes fixed?:' + new_fixed)
+        return new_fixed
 
     @staticmethod
     def fix_yml(original, html_damaged):
@@ -661,23 +659,28 @@ class ProcessStrings(object):
             if trimo == '\\ Wie lautet Ihre Wahl?':
                 return [True, 'Cual es tu decision?']
         self.cur.execute('PRAGMA encoding = "UTF-8"')
-        query = self.cur.execute("SELECT key, value FROM keyvals WHERE key = '%s'" % trimo)
+
+        try:
+            query = self.cur.execute("SELECT key, value FROM keyvals WHERE key = '%s'" % trimo)
+        except sqlite3.OperationalError:
+            query = self.cur.execute('SELECT key, value FROM keyvals WHERE key = "%s"' % trimo)
+
         self.db.commit()
         # print('query key', "SELECT key, value FROM keyvals WHERE key = '%s'" % trimo)
         # print('fetchone?')
         found = query.fetchone()
-        # print('found?')
+        # print('found cache?')
         if found:
-            # print('cached key found key?')
+            print('cached key found key?')
             # decoded_key = self.decode_charset()
             cached_key = unquote(quote(found[0], ''))
-            # print('found key', cached_key)
+            print('found key (' + cached_key + ')==?==(' + trimo + ')')
             if cached_key == trimo:
                 # decoded_value = self.decode_charset(found[1])
                 cached_content = unquote(quote(found[1], ''))
-                print('cache found content:(' +  cached_content + ')' )
+                print('cache found content:(' + cached_content + ')')
                 return [True, cached_content]
-        # print('not found?', found)
+        print('not found cache?', found)
         return [False, trimo]
 
     @staticmethod
@@ -736,6 +739,7 @@ class ProcessStrings(object):
 
     def cache_translation(self, trimo, translation):
         # print('caching pwd(' + self.cwd + '): "' + trimo + '", "' + translation + '"')
+        print('caching: "' + trimo + '", "' + translation + '"')
         # trimo_encoded = self.encode_charset(trimo)
         # translation_encoded = self.encode_charset(translation)
         self.cur.execute('INSERT OR IGNORE INTO keyvals VALUES (?,?)', (unquote(trimo), unquote(translation)))
@@ -796,14 +800,15 @@ class ProcessStrings(object):
             if fake:
                 translation = self._process_fake_to_translate(trimo)
             else:
-                # print('calling it', trimo)
+                print('calling it:(' + trimo + ')')
                 translation = self.callback(trimo)
+                translation = self.remove_damaged_quotes(trimo, translation)
                 self.cache_translation(trimo, translation)
         retrimmed = lefty + translation + righty
         # # print('  got ("' + translation[0] + '")')
         # # print('  got ("' + translation + '")')
         # # print('retrim("' + retrimmed[0] + '")')
-        print('translated("' + retrimmed + '")')
+        #   print('retrim("' + retrimmed + '")')
         return retrimmed
 
     def is_json(myjson):

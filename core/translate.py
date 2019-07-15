@@ -151,7 +151,7 @@ class DeeplTranslate(object):
             raise DeeplTranslateException(self.error_codes[501])
         except ValueError:
             raise DeeplTranslateException(self.error_codes[503])
-        print('_get_translation_from_deepl:', translation)
+        # print('_get_translation_from_deepl:', translation)
         return translation
 
     def build_url(self, text):
@@ -221,9 +221,8 @@ class DeeplTranslate(object):
         translations = loaded['translations']
         # detected_lang = translations[0]['detected_source_language']
         translation = translations[0]['text']
-        print('translation 1 ')
         translation = unquote(quote(translation, ''))
-        pprint(translation)
+        print('translation return: (' + translation + ')')
         return translation
 
 
