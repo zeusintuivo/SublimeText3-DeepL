@@ -29,7 +29,8 @@ class TestProcessStrings(unittest.TestCase):
              11: '        title: Centroderentas “responds to a specific need of society, it is practical and',
              12: '        title: Centroderentas “responds to a specific need of society, it is practical and '
                  'user-friendly, has an enormous amount of growth potential"',
-             13: '          müssen Sie alle kommenden Termine in Ihrem Konto stornieren.\n"'
+             13: '          müssen Sie alle kommenden Termine in Ihrem Konto stornieren.\n"',
+             14: 'Vous vous exposez, ce faisant, à une forte dégradation de l’expérience utilisateur'
              }
 
     process_strings = ProcessStrings()
@@ -95,10 +96,14 @@ class TestProcessStrings(unittest.TestCase):
     #                      '        title: translated(Centroderentas \xe2\x80\x9cresponds to a specific need of '
     #                      'society), translated(it is practical and user-friendly), translated(has an enormous '
     #                      'amount of growth potential)"')
+    #
+    # def test_cuote_at_the_end(self):
+    #     self.assertEqual(self.process_strings.translate(self.tests[13], 'es', 'de', 'yml', True),
+    #                      '          usted debe cancelar todas las próximas citas en su cuenta.\n"')
 
-    def test_cuote_at_the_end(self):
-        self.assertEqual(self.process_strings.translate(self.tests[13], 'es', 'de', 'yml', True),
-                         '          usted debe cancelar todas las próximas citas en su cuenta.\n"')
+    def test_comma_separation(self):
+        self.assertEqual(self.process_strings.translate(self.tests[14], 'es', 'fr', 'yml', True),
+                         'Usted se está exponiendo a, de este modo, un deterioro significativo de la experiencia del usuario')
 
 
 if __name__ == '__main__':
