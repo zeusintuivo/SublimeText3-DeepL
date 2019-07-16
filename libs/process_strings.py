@@ -69,8 +69,14 @@ class ProcessStrings(object):
             original = original.replace("accepté(e)", 'acceptée')
             original = original.replace("ce(tte)", 'cette')
             # ' -> ’ str.upper() .lower()
-            for vocal in ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U']:
+            for vocal in ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U', '1', '2', '3', '4', '5'
+                        '6', '7', '8', '9', '0']:
                 for consonant in ['qu,', 'n', 'l', 'c', 's', 'd', 'j', 'QU,', 'N', 'L', 'C', 'S', 'D', 'J']:
+                    original = original.replace(consonant + "'" + vocal, consonant + '’' + vocal)
+            for consonant in ['n', 'N', 'd', 'D']:
+                for vocal in string.ascii_lowercase:
+                    original = original.replace(consonant + "'" + vocal, consonant + '’' + vocal)
+                for vocal in string.ascii_uppercase:
                     original = original.replace(consonant + "'" + vocal, consonant + '’' + vocal)
 
         if source_language == 'en':
@@ -83,6 +89,11 @@ class ProcessStrings(object):
             # ' -> ’ str.upper() .lower()
             for vocal in ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U']:
                 for consonant in ['qu,', 'n', 'l', 'c', 's', 'd', 'j', 'QU,', 'N', 'L', 'C', 'S', 'D', 'J']:
+                    original = original.replace(consonant + "'" + vocal, consonant + '’' + vocal)
+            for consonant in ['n', 'N']:
+                for vocal in string.ascii_lowercase:
+                    original = original.replace(consonant + "'" + vocal, consonant + '’' + vocal)
+                for vocal in string.ascii_uppercase:
                     original = original.replace(consonant + "'" + vocal, consonant + '’' + vocal)
             for vocal in ['t', 's', ]:
                 for consonant in string.ascii_lowercase:
