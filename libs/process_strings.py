@@ -68,6 +68,16 @@ class ProcessStrings(object):
             original = original.replace("rempli(e)", 'remplie')
             original = original.replace("accepté(e)", 'acceptée')
             original = original.replace("ce(tte)", 'cette')
+            if target_language == 'es':
+                original = original.replace("Av.J.C.", 'E.C.')
+                original = original.replace("Ap.J.C.", 'A.E.C.')
+            if target_language == 'en':
+                original = original.replace("Av.J.C.", 'B.C.E.')
+                original = original.replace("Ap.J.C.", 'C.E.')
+            if target_language == 'de':
+                original = original.replace("Av.J.C.", 'v.Chr.')
+                original = original.replace("Ap.J.C.", 'n.Chr.')
+
             # ' -> ’ str.upper() .lower()
             for vocal in ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U', '1', '2', '3', '4', '5'
                         '6', '7', '8', '9', '0']:
@@ -78,6 +88,7 @@ class ProcessStrings(object):
                     original = original.replace(consonant + "'" + vocal, consonant + '’' + vocal)
                 for vocal in string.ascii_uppercase:
                     original = original.replace(consonant + "'" + vocal, consonant + '’' + vocal)
+
 
         if source_language == 'en':
             original = original.replace("n't", 'n’t')
