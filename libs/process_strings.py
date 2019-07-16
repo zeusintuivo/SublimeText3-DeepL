@@ -34,7 +34,7 @@ import json
 import os
 
 import sqlite3
-
+import string
 
 class ProcessStrings(object):
     unisylabus = (None, ' ', '', '"', "'", '<br/>', '</i>', '<strong>', '</strong>', '<i>', '<br>', '</br>',
@@ -72,6 +72,23 @@ class ProcessStrings(object):
             for vocal in ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U']:
                 for consonant in ['qu,', 'n', 'l', 'c', 's', 'd', 'j', 'QU,', 'N', 'L', 'C', 'S', 'D', 'J']:
                     original = original.replace(consonant + "'" + vocal, consonant + '’' + vocal)
+
+        if source_language == 'en':
+            original = original.replace("n't", 'n’t')
+            original = original.replace("n's", 'n’s')
+            original = original.replace("un(e)", 'une')
+            original = original.replace("rempli(e)", 'remplie')
+            original = original.replace("accepté(e)", 'acceptée')
+            original = original.replace("ce(tte)", 'cette')
+            # ' -> ’ str.upper() .lower()
+            for vocal in ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U']:
+                for consonant in ['qu,', 'n', 'l', 'c', 's', 'd', 'j', 'QU,', 'N', 'L', 'C', 'S', 'D', 'J']:
+                    original = original.replace(consonant + "'" + vocal, consonant + '’' + vocal)
+            for vocal in ['t', 's', ]:
+                for consonant in string.ascii_lowercase:
+                    original = original.replace(consonant + "'" + vocal + ' ', consonant + '’' + vocal + ' ')
+                for consonant in string.ascii_uppercase:
+                    original = original.replace(consonant + "'" + vocal + ' ', consonant + '’' + vocal + ' ')
 
         print('original:', original)
 
