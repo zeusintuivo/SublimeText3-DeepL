@@ -70,13 +70,19 @@ class ProcessStrings(object):
             original = original.replace("ce(tte)", 'cette')
             if target_language == 'es':
                 original = original.replace("Av.J.C.", 'E.C.')
+                original = original.replace("Av. J.C.", 'E.C.')
                 original = original.replace("Ap.J.C.", 'A.E.C.')
+                original = original.replace("Ap. J.C.", 'A.E.C.')
             if target_language == 'en':
                 original = original.replace("Av.J.C.", 'B.C.E.')
+                original = original.replace("Av. J.C.", 'B.C.E.')
                 original = original.replace("Ap.J.C.", 'C.E.')
+                original = original.replace("Ap. J.C.", 'C.E.')
             if target_language == 'de':
                 original = original.replace("Av.J.C.", 'v.Chr.')
+                original = original.replace("Av. J.C.", 'v.Chr.')
                 original = original.replace("Ap.J.C.", 'n.Chr.')
+                original = original.replace("Ap. J.C.", 'n.Chr.')
 
             # ' -> ’ str.upper() .lower()
             for vocal in ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U', '1', '2', '3', '4', '5'
