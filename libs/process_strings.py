@@ -95,7 +95,6 @@ class ProcessStrings(object):
                 for vocal in string.ascii_uppercase:
                     original = original.replace(consonant + "'" + vocal, consonant + '’' + vocal)
 
-
         if source_language == 'en':
             original = original.replace("n't", 'n’t')
             original = original.replace("n's", 'n’s')
