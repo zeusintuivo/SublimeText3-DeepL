@@ -126,17 +126,14 @@ class DeeplTranslate(object):
     def languages(self, cache=True):
         try:
             if not self.cache['languages'] and cache:
-                self.cache['languages'] = loads('{"languages":{'
-                                                '"en":"English",'
-                                                '"es":"Spanish",'
+                self.cache['languages'] = loads('{"languages":{"en":"English","es":"Spanish",'
                                                 '"de":"German",'
                                                 '"fr":"French",'
                                                 '"it":"Italian",'
                                                 '"pt":"Portuguese",'
                                                 '"pl":"Polish",'
                                                 '"nl":"Dutch",'
-                                                '"ru":"Russian",'
-                                                '}}')
+                                                '"ru":"Russian"}}')
         except IOError:
             raise DeeplTranslateException(self.error_codes[501])
         except ValueError:

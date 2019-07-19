@@ -33,7 +33,9 @@ class TestProcessStrings(unittest.TestCase):
              14: 'Vous vous exposez, ce faisant, à une forte dégradation de l’expérience utilisateur',
              15: "   key_something_here: ''",
              16: '   key_something_here: ""',
-             17: "      # html: '<abbr title=\"required\">*</abbr>'"
+             17: "      # html: '<abbr title=\"required\">*</abbr>'",
+             18: '        "%{renticentioner_with_determiner} est contraint de déplacer votre RDV du %{old_start_date}'
+                 ' au %{new_start_date}.'
              }
 
     process_strings = ProcessStrings()
@@ -124,6 +126,11 @@ class TestProcessStrings(unittest.TestCase):
     def test_trail_double_quotes(self):
         self.assertEqual(self.process_strings.translate('# html: "', 'es', 'fr', 'yml', True),
                          '# html: "')
+
+    def test_keeps_one_quote(self):
+        self.assertEqual(self.process_strings.translate(self.tests[18], 'es', 'fr', 'yml', True),
+                         '        "%{renticentioner_with_determiner} se ve obligado a trasladar su cita de '
+                         '%{old_start_date} a la %{new_start_date}.')
 
 
 if __name__ == '__main__':

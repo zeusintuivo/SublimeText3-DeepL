@@ -37,7 +37,7 @@ import sqlite3
 import string
 
 class ProcessStrings(object):
-    unisylabus = (None, ' ', '', '"', "'", '<br/>', '</i>', '<strong>', '</strong>', '<i>', '<br>', '</br>',
+    unisylabus = (None, ' ', '', '"', "'", '<br/>', '</i>', '<strong>', '</strong>', '<i>', '<br>', '</br>', '~',
                   '>', '|', '|-', '.', ',', ';', ':', ',', '•', '+', '!', '¡', '?', '¿', '(', ')', '[', ']',
                   '{', '}', '+', '(#', '#', '/', '~\\', '^\\', "\\n\\n", "\\n")
     target_language = ''
@@ -84,15 +84,30 @@ class ProcessStrings(object):
                 original = original.replace("Ap.J.C.", 'n.Chr.')
                 original = original.replace("Ap. J.C.", 'n.Chr.')
 
-            # ' -> ’ str.upper() .lower()
+            # ' -> ’ str.upper() .lower() D'ACCÈS ET D’U
             for vocal in ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U', '1', '2', '3', '4', '5'
                         '6', '7', '8', '9', '0']:
                 for consonant in ['qu,', 'n', 'l', 'c', 's', 'd', 'j', 'QU,', 'N', 'L', 'C', 'S', 'D', 'J']:
+                    original = original.replace(consonant + " ’" + vocal, consonant + '’' + vocal)
+                    original = original.replace(consonant + "’" + vocal, consonant + '’' + vocal)
+                    original = original.replace(consonant + " '" + vocal, consonant + '’' + vocal)
+                    original = original.replace(consonant + "'" + vocal, consonant + '’' + vocal)
+                    original = original.replace(consonant + " '" + vocal, consonant + '’' + vocal)
                     original = original.replace(consonant + "'" + vocal, consonant + '’' + vocal)
             for consonant in ['n', 'N', 'd', 'D']:
                 for vocal in string.ascii_lowercase:
+                    original = original.replace(consonant + " ’" + vocal, consonant + '’' + vocal)
+                    original = original.replace(consonant + "’" + vocal, consonant + '’' + vocal)
+                    original = original.replace(consonant + " '" + vocal, consonant + '’' + vocal)
+                    original = original.replace(consonant + "'" + vocal, consonant + '’' + vocal)
+                    original = original.replace(consonant + " '" + vocal, consonant + '’' + vocal)
                     original = original.replace(consonant + "'" + vocal, consonant + '’' + vocal)
                 for vocal in string.ascii_uppercase:
+                    original = original.replace(consonant + " ’" + vocal, consonant + '’' + vocal)
+                    original = original.replace(consonant + "’" + vocal, consonant + '’' + vocal)
+                    original = original.replace(consonant + " '" + vocal, consonant + '’' + vocal)
+                    original = original.replace(consonant + "'" + vocal, consonant + '’' + vocal)
+                    original = original.replace(consonant + " '" + vocal, consonant + '’' + vocal)
                     original = original.replace(consonant + "'" + vocal, consonant + '’' + vocal)
 
         if source_language == 'en':
@@ -102,20 +117,31 @@ class ProcessStrings(object):
             original = original.replace("rempli(e)", 'remplie')
             original = original.replace("accepté(e)", 'acceptée')
             original = original.replace("ce(tte)", 'cette')
-            # ' -> ’ str.upper() .lower()
-            for vocal in ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U']:
+            # ' -> ’ str.upper() .lower() D'ACCÈS ET D’U
+            for vocal in ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U', '1', '2', '3', '4', '5'
+                        '6', '7', '8', '9', '0']:
                 for consonant in ['qu,', 'n', 'l', 'c', 's', 'd', 'j', 'QU,', 'N', 'L', 'C', 'S', 'D', 'J']:
+                    original = original.replace(consonant + " ’" + vocal, consonant + '’' + vocal)
+                    original = original.replace(consonant + "’" + vocal, consonant + '’' + vocal)
+                    original = original.replace(consonant + " '" + vocal, consonant + '’' + vocal)
                     original = original.replace(consonant + "'" + vocal, consonant + '’' + vocal)
-            for consonant in ['n', 'N']:
+                    original = original.replace(consonant + " '" + vocal, consonant + '’' + vocal)
+                    original = original.replace(consonant + "'" + vocal, consonant + '’' + vocal)
+            for consonant in ['n', 'N', 'd', 'D']:
                 for vocal in string.ascii_lowercase:
+                    original = original.replace(consonant + " ’" + vocal, consonant + '’' + vocal)
+                    original = original.replace(consonant + "’" + vocal, consonant + '’' + vocal)
+                    original = original.replace(consonant + " '" + vocal, consonant + '’' + vocal)
+                    original = original.replace(consonant + "'" + vocal, consonant + '’' + vocal)
+                    original = original.replace(consonant + " '" + vocal, consonant + '’' + vocal)
                     original = original.replace(consonant + "'" + vocal, consonant + '’' + vocal)
                 for vocal in string.ascii_uppercase:
+                    original = original.replace(consonant + " ’" + vocal, consonant + '’' + vocal)
+                    original = original.replace(consonant + "’" + vocal, consonant + '’' + vocal)
+                    original = original.replace(consonant + " '" + vocal, consonant + '’' + vocal)
                     original = original.replace(consonant + "'" + vocal, consonant + '’' + vocal)
-            for vocal in ['t', 's', ]:
-                for consonant in string.ascii_lowercase:
-                    original = original.replace(consonant + "'" + vocal + ' ', consonant + '’' + vocal + ' ')
-                for consonant in string.ascii_uppercase:
-                    original = original.replace(consonant + "'" + vocal + ' ', consonant + '’' + vocal + ' ')
+                    original = original.replace(consonant + " '" + vocal, consonant + '’' + vocal)
+                    original = original.replace(consonant + "'" + vocal, consonant + '’' + vocal)
 
         print('original:', original)
 
